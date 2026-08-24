@@ -4,13 +4,17 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FLASK_ENV=production \
-    DATABASE_URL=sqlite:////app/data/dictation.db
+    DATABASE_URL=sqlite:////app/data/dictation.db \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including CA certificates for secure WSS/TLS
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    ca-certificates \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies

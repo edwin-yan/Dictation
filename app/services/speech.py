@@ -1,26 +1,34 @@
 import os
 import hashlib
 import asyncio
+import logging
+import ssl
 from pathlib import Path
-from flask import current_app
+
+try:
+    import certifi
+    CA_CERT_PATH = certifi.where()
+except ImportError:
+    CA_CERT_PATH = None
+
+logger = logging.getLogger(__name__)
 
 # Default voice choices
 DEFAULT_VOICE = "en-US-AnaNeural"  # Friendly, natural youth voice for elementary learning
 BACKUP_VOICES = {
-    "ana": "en-US-AnaNeural",  # Friendly & clear child voice
-    "jenny": "en-US-JennyNeural",  # Expressive female voice
-    "guy": "en-US-GuyNeural",  # Clear male voice
-    "aria": "en-US-AriaNeural"  # Confident female voice
+    "ana": "en-US-AnaNeural",       # Friendly & clear child voice
+    "jenny": "en-US-JennyNeural",   # Expressive female voice
+    "guy": "en-US-GuyNeural",       # Clear male voice
+    "aria": "en-US-AriaNeural"      # Confident female voice
 }
 
 # Speed mappings
 SPEED_RATES = {
-    "slow": "-25%",  # ~0.75x speed - extra slow for tricky words / young kids
+    "slow": "-25%",     # ~0.75x speed - extra slow for tricky words / young kids
     "relaxed": "-15%",  # ~0.85x speed - comfortable default for kids
-    "normal": "-5%",  # ~0.95x speed
-    "fast": "+5%"  # ~1.05x speed
+    "normal": "-5%",    # ~0.95x speed
+    "fast": "+5%"       # ~1.05x speed
 }
-
 
 def get_audio_cache_dir() -> Path:
     """Returns the persistent audio cache directory."""
@@ -29,7 +37,7 @@ def get_audio_cache_dir() -> Path:
         cache_dir = BASE_DIR / 'data' / 'audio_cache'
     except Exception:
         cache_dir = Path(__file__).resolve().parent.parent.parent / 'data' / 'audio_cache'
-
+    
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir
 
@@ -47,6 +55,27 @@ async def _synthesize_edge_tts(text: str, voice: str, rate: str, output_path: st
     await communicate.save(output_path)
 
 
+def _run_coroutine_threadsafe(coro):
+    """
+    Safely executes an async coroutine from synchronous threads / Gunicorn workers.
+    """
+    try:
+        # Check if an active event loop exists in this thread
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    if loop.is_running():
+        # Running inside an active loop (e.g. Gevent or asyncio event loop), run in thread
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(lambda: asyncio.run(coro))
+            return future.result()
+    else:
+        return loop.run_until_complete(coro)
+
+
 def synthesize_speech(word: str, context: str = "", speed: str = "relaxed", voice: str = DEFAULT_VOICE) -> str:
     """
     Generates or retrieves cached high-quality neural speech mp3 file.
@@ -58,13 +87,13 @@ def synthesize_speech(word: str, context: str = "", speed: str = "relaxed", voic
     """
     clean_word = (word or "").strip()
     clean_context = (context or "").strip()
-
+    
     if not clean_word:
         raise ValueError("Cannot synthesize empty word.")
 
     # Resolve voice
     selected_voice = BACKUP_VOICES.get(voice.lower(), voice) if voice else DEFAULT_VOICE
-
+    
     # Resolve rate
     rate_str = SPEED_RATES.get(speed.lower(), speed if "%" in speed else "-15%")
 
@@ -82,12 +111,12 @@ def synthesize_speech(word: str, context: str = "", speed: str = "relaxed", voic
     if mp3_path.exists() and mp3_path.stat().st_size > 0:
         return str(mp3_path)
 
-    # Synthesize via edge_tts
+    # Synthesize via edge_tts with thread-safe execution
     try:
-        asyncio.run(_synthesize_edge_tts(speech_text, selected_voice, rate_str, str(mp3_path)))
+        _run_coroutine_threadsafe(_synthesize_edge_tts(speech_text, selected_voice, rate_str, str(mp3_path)))
         return str(mp3_path)
     except Exception as e:
-        print(f"Notice: edge-tts synthesis failed with {e}")
+        logger.error(f"Edge-TTS synthesis error for word '{clean_word}': {e}", exc_info=True)
         # Clean up incomplete file if any
         if mp3_path.exists() and mp3_path.stat().st_size == 0:
             mp3_path.unlink(missing_ok=True)
