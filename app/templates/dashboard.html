@@ -67,10 +67,10 @@
         {% for folder in folder_groups %}
         <div style="margin-bottom: 2rem;">
             <!-- Folder Header -->
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--slate-200);">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--slate-200); gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; flex: 1;">
                     <span style="font-size: 1.5rem;">{{ folder.icon }}</span>
-                    <h3 style="font-size: 1.3rem; color: var(--slate-900);">{{ folder.name }}</h3>
+                    <h3 style="font-size: 1.3rem; color: var(--slate-900); margin: 0;">{{ folder.name }}</h3>
                     {% if folder.description %}
                     <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.25rem;">— {{ folder.description }}</span>
                     {% endif %}
@@ -84,7 +84,7 @@
                 <div class="list-card">
                     <div>
                         <div class="list-card-header">
-                            <div>
+                            <div style="flex: 1; min-width: 0;">
                                 <h4 class="list-title" style="font-size: 1.2rem;">{{ item.title }}</h4>
                                 <p class="list-desc">{{ item.description }}</p>
                             </div>
