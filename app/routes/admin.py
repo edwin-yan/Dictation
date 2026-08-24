@@ -483,6 +483,17 @@ def history():
     )
 
 
+@admin_bp.route('/cache-audio', methods=['POST'])
+@admin_required
+def cache_audio():
+    from app.services.speech import pregenerate_all_audio
+    res = pregenerate_all_audio()
+    flash(
+        f"Audio pre-generation complete: {res['cached']} of {res['total']} words cached to disk (errors: {res['errors']}).",
+        'success')
+    return redirect(url_for('admin.index'))
+
+
 @admin_bp.route('/reseed', methods=['POST'])
 @admin_required
 def reseed():

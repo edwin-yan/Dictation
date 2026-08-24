@@ -122,6 +122,20 @@
             </div>
         </div>
 
+        <!-- Audio Cache Tool -->
+        <div class="card" style="margin-bottom: 1.5rem; border-color: #bfdbfe; background: #eff6ff;">
+            <h3 style="font-size: 1.1rem; color: #1e40af; margin-bottom: 0.5rem;">🎙️ Pre-Generate Audio Cache</h3>
+            <p style="font-size: 0.85rem; color: #1e3a8a; margin-bottom: 1rem;">
+                Synthesizes and saves high-quality MP3 audio files to local disk for all {{ words_count }} vocabulary
+                words so they play instantly with zero latency even without internet.
+            </p>
+            <form method="POST" action="{{ url_for('admin.cache_audio') }}">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    ⚡ Pre-Generate All Word Audio
+                </button>
+            </form>
+        </div>
+
         <!-- Reseed Tool -->
         <div class="card" style="border-color: #fef08a; background: #fefce8;">
             <h3 style="font-size: 1.1rem; color: #854d0e; margin-bottom: 0.5rem;">🔄 Reset & Re-Seed Data</h3>

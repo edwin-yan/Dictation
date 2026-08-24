@@ -60,14 +60,12 @@ def _run_coroutine_threadsafe(coro):
     Safely executes an async coroutine from synchronous threads / Gunicorn workers.
     """
     try:
-        # Check if an active event loop exists in this thread
         loop = asyncio.get_event_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
     if loop.is_running():
-        # Running inside an active loop (e.g. Gevent or asyncio event loop), run in thread
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(lambda: asyncio.run(coro))
@@ -121,3 +119,21 @@ def synthesize_speech(word: str, context: str = "", speed: str = "relaxed", voic
         if mp3_path.exists() and mp3_path.stat().st_size == 0:
             mp3_path.unlink(missing_ok=True)
         raise e
+
+
+def pregenerate_all_audio() -> dict:
+    """Pre-synthesizes and caches audio files for all words currently in the database."""
+    from app.models import Word
+    words = Word.query.all()
+    cached_count = 0
+    error_count = 0
+
+    for w in words:
+        try:
+            synthesize_speech(w.word, w.context_sentence or "", speed="relaxed")
+            cached_count += 1
+        except Exception as e:
+            logger.warning(f"Could not pre-generate audio for word '{w.word}': {e}")
+            error_count += 1
+
+    return {"total": len(words), "cached": cached_count, "errors": error_count}
