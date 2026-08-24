@@ -91,16 +91,11 @@
     }}
 </script>
 <script id="test-config-data" type="application/json">
-    {
-        "student_id": {{
-        student.id
-    }},
-    "list_id": {
-    {
-    word_list.id if word_list else 'null' }},
-    "test_type": {{test_type | tojson }},
-    "title": {{test_title | tojson}}
-    }
+    {{
+        test_config
+        |
+        tojson
+    }}
 </script>
 
 <script>

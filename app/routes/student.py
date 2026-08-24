@@ -1,12 +1,13 @@
-from flask import Blueprint, render_template, request, redirect, url_for, make_response, flash, jsonify
-from app.models import db, Student, WordListFolder, WordList, Word, ChallengeAttempt, ChallengeDetail, MissedWord
 import random
+from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response
+from app import db
+from app.models import Student, WordList, Word, ChallengeAttempt, MissedWord, WordListFolder
 
 student_bp = Blueprint('student', __name__)
 
-
 @student_bp.route('/')
 def index():
+    """Redirect to student select or student dashboard."""
     student_id = request.args.get('student_id', type=int)
     if not student_id:
         cookie_id = request.cookies.get('dictation_student_id')
@@ -18,9 +19,14 @@ def index():
         if student:
             return redirect(url_for('student.dashboard', student_id=student.id))
 
+    first_student = Student.query.first()
+    if first_student:
+        return redirect(url_for('student.dashboard', student_id=first_student.id))
+
     return redirect(url_for('student.select_student'))
 
 
+@student_bp.route('/select')
 @student_bp.route('/select-student')
 def select_student():
     students = Student.query.order_by(Student.name).all()
@@ -31,7 +37,8 @@ def select_student():
 def dashboard():
     students = Student.query.order_by(Student.name).all()
     if not students:
-        return render_template('dashboard.html', students=[], current_student=None)
+        flash("Welcome to SpellMaster! Please create your first student profile to begin.", "info")
+        return redirect(url_for('admin.students'))
 
     student_id = request.args.get('student_id', type=int)
     if not student_id:
@@ -39,42 +46,44 @@ def dashboard():
         if cookie_id and cookie_id.isdigit():
             student_id = int(cookie_id)
 
-    current_student = None
-    if student_id:
-        current_student = db.session.get(Student, student_id)
+    current_student = db.session.get(Student, student_id) if student_id else students[0]
     if not current_student:
         current_student = students[0]
 
-    # Fetch assigned bundles for current student
+    # Fetch folders and assigned lists
     assigned_folders = current_student.folders.order_by(WordListFolder.position, WordListFolder.name).all()
-    direct_lists = current_student.lists.order_by(WordList.id).all()
-    
+    folder_ids = [f.id for f in assigned_folders]
+
+    # Direct list assignments
+    direct_lists = current_student.lists.all()
+
+    # Collect folder groups
     folder_groups = []
     processed_list_ids = set()
     total_assigned_lists = 0
 
     for folder in assigned_folders:
         folder_lists = folder.lists.order_by(WordList.id).all()
-        if folder_lists:
-            enriched_lists = []
-            for wlist in folder_lists:
-                latest_attempt = ChallengeAttempt.query.filter_by(
-                    student_id=current_student.id,
-                    list_id=wlist.id
-                ).order_by(ChallengeAttempt.created_at.desc()).first()
+        enriched_lists = []
+        for wlist in folder_lists:
+            processed_list_ids.add(wlist.id)
+            latest_attempt = ChallengeAttempt.query.filter_by(
+                student_id=current_student.id,
+                list_id=wlist.id
+            ).order_by(ChallengeAttempt.created_at.desc()).first()
 
-                enriched_lists.append({
-                    'id': wlist.id,
-                    'title': wlist.title,
-                    'description': wlist.description,
-                    'category': wlist.category,
-                    'word_count': wlist.words.count(),
-                    'latest_attempt': latest_attempt,
-                    'words': wlist.words.all()
-                })
-                processed_list_ids.add(wlist.id)
-                total_assigned_lists += 1
+            enriched_lists.append({
+                'id': wlist.id,
+                'title': wlist.title,
+                'description': wlist.description,
+                'category': wlist.category,
+                'word_count': wlist.words.count(),
+                'latest_attempt': latest_attempt,
+                'words': wlist.words.all()
+            })
+            total_assigned_lists += 1
 
+        if enriched_lists:
             folder_groups.append({
                 'id': folder.id,
                 'name': folder.name,
@@ -141,8 +150,7 @@ def dashboard():
         total_challenges=total_challenges,
         avg_score=round(avg_score, 1)
     ))
-
-    resp.set_cookie('dictation_student_id', str(current_student.id), max_age=30 * 24 * 3600)
+    resp.set_cookie('dictation_student_id', str(current_student.id), max_age=60 * 60 * 24 * 365)
     return resp
 
 
@@ -166,6 +174,7 @@ def study_list(list_id):
         return redirect(url_for('student.dashboard', student_id=student.id if student else None))
 
     words_data = [w.to_dict() for w in words]
+    random.shuffle(words_data)
 
     return render_template(
         'study_cards.html',
@@ -201,13 +210,21 @@ def take_challenge(list_id):
     words_data = [w.to_dict() for w in words_query]
     random.shuffle(words_data)
 
+    test_config = {
+        'student_id': student.id,
+        'list_id': word_list.id,
+        'test_type': 'list',
+        'title': word_list.title
+    }
+
     return render_template(
         'test.html',
         student=student,
         word_list=word_list,
         test_type='list',
         test_title=word_list.title,
-        words=words_data
+        words=words_data,
+        test_config=test_config
     )
 
 
@@ -242,13 +259,21 @@ def take_tricky_challenge():
 
     random.shuffle(words_data)
 
+    test_config = {
+        'student_id': student.id,
+        'list_id': None,
+        'test_type': 'missed_words',
+        'title': 'Tricky Words Quest'
+    }
+
     return render_template(
         'test.html',
         student=student,
         word_list=None,
         test_type='missed_words',
         test_title='Tricky Words Quest',
-        words=words_data
+        words=words_data,
+        test_config=test_config
     )
 
 

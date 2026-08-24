@@ -3,6 +3,18 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Pre-unlock Audio for Safari / iOS when clicking Quest or Study links
+    document.querySelectorAll('a[href*="/challenge/"], a[href*="/study/"]').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.dictationAudio && window.dictationAudio.audioElement) {
+                try {
+                    window.dictationAudio.audioElement.load();
+                } catch (e) {
+                }
+            }
+        });
+    });
+
     // Student Switcher in Navbar
     const studentSelect = document.getElementById('navbar-student-select');
     if (studentSelect) {

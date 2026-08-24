@@ -129,11 +129,20 @@ def pregenerate_all_audio() -> dict:
     error_count = 0
 
     for w in words:
+        # 1. Word with context cadence (used in challenge & card back)
         try:
             synthesize_speech(w.word, w.context_sentence or "", speed="relaxed")
             cached_count += 1
         except Exception as e:
-            logger.warning(f"Could not pre-generate audio for word '{w.word}': {e}")
+            logger.warning(f"Could not pre-generate context audio for word '{w.word}': {e}")
             error_count += 1
 
-    return {"total": len(words), "cached": cached_count, "errors": error_count}
+        # 2. Word alone (used in card front)
+        try:
+            synthesize_speech(w.word, "", speed="relaxed")
+            cached_count += 1
+        except Exception as e:
+            logger.warning(f"Could not pre-generate standalone audio for word '{w.word}': {e}")
+            error_count += 1
+
+    return {"total_words": len(words), "cached_files": cached_count, "errors": error_count}

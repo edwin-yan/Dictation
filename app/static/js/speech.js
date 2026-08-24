@@ -1,24 +1,54 @@
 /**
  * Advanced Hybrid Speech Dictation Engine
  * 1. Primary: High-Fidelity Server Neural TTS (Microsoft Azure Neural voices via /api/audio/speak)
- * 2. Fallback / Offline: Browser Web Speech API (American English)
+ * 2. Fallback: Browser Web Speech API (Only when offline or server unavailable)
  */
 class DictationAudio {
   constructor() {
-    this.audioElement = null;
+      this.audioElement = new Audio();
     this.synth = window.speechSynthesis || null;
     this.fallbackVoice = null;
     this.isSpeaking = false;
+      this.unlocked = false;
+      this.pendingPlayback = null;
     
     // User preferences from localStorage
-    this.speed = localStorage.getItem('dictation_speed') || 'relaxed'; // 'slow', 'relaxed', 'normal', 'fast'
-    this.voice = localStorage.getItem('dictation_voice') || 'ana'; // 'ana', 'jenny', 'guy'
-    this.engine = localStorage.getItem('dictation_engine') || 'neural'; // 'neural' or 'browser'
+      this.speed = localStorage.getItem('dictation_speed') || 'relaxed';
+      this.voice = localStorage.getItem('dictation_voice') || 'ana';
+      this.engine = localStorage.getItem('dictation_engine') || 'neural';
 
     this.initFallbackVoice();
     if (this.synth && this.synth.onvoiceschanged !== undefined) {
       this.synth.onvoiceschanged = () => this.initFallbackVoice();
     }
+
+      // Audio Unlocking & Safari Auto-Recovery on First Touch
+      this.initAudioUnlock();
+  }
+
+    initAudioUnlock() {
+        const unlockHandler = () => {
+            this.unlocked = true;
+
+            // If Safari paused initial autoplay on page open, immediately trigger it on first touch!
+            if (this.pendingPlayback) {
+                const pending = this.pendingPlayback;
+                this.pendingPlayback = null;
+                this.speak(pending.word, pending.context, pending.onStart, pending.onEnd);
+            }
+
+            window.removeEventListener('pointerdown', unlockHandler);
+            window.removeEventListener('touchstart', unlockHandler);
+            window.removeEventListener('mousedown', unlockHandler);
+            window.removeEventListener('click', unlockHandler);
+            window.removeEventListener('keydown', unlockHandler);
+        };
+
+        window.addEventListener('pointerdown', unlockHandler, {passive: true});
+        window.addEventListener('touchstart', unlockHandler, {passive: true});
+        window.addEventListener('mousedown', unlockHandler, {passive: true});
+        window.addEventListener('click', unlockHandler, {passive: true});
+        window.addEventListener('keydown', unlockHandler, {passive: true});
   }
 
   setSpeed(newSpeed) {
@@ -79,7 +109,7 @@ class DictationAudio {
       return;
     }
 
-    // 1. Try High-Quality Server Neural Audio
+      // 1. High-Quality Server Neural Audio (Azure Neural)
     const params = new URLSearchParams({
       word: cleanWord,
       context: cleanContext,
@@ -88,14 +118,14 @@ class DictationAudio {
     });
 
     const audioUrl = `/api/audio/speak?${params.toString()}`;
-    const audio = new Audio();
+      const audio = this.audioElement || new Audio();
     this.audioElement = audio;
 
     let fallbackTriggered = false;
-    const triggerFallback = () => {
+      const triggerFallback = (reason) => {
       if (fallbackTriggered) return;
       fallbackTriggered = true;
-      console.warn("Neural audio streaming failed, switching to local browser Web Speech API...");
+          console.warn("Neural audio failed (" + reason + "), trying Web Speech fallback...");
       this.speakWebSpeech(cleanWord, cleanContext, onStart, onEnd);
     };
 
@@ -106,27 +136,37 @@ class DictationAudio {
 
     audio.onended = () => {
       this.isSpeaking = false;
-      this.audioElement = null;
       if (onEnd) onEnd();
     };
 
-    audio.onerror = () => {
-      triggerFallback();
+      audio.onerror = (e) => {
+          console.warn("Audio loading error for URL:", audioUrl, e);
+          triggerFallback('network_error');
     };
 
     audio.src = audioUrl;
 
     const playPromise = audio.play();
     if (playPromise !== undefined) {
-      playPromise.catch((err) => {
-        console.warn("Audio play rejected or failed:", err);
-        triggerFallback();
+        playPromise.then(() => {
+            this.unlocked = true;
+            this.pendingPlayback = null;
+        }).catch((err) => {
+            // NotAllowedError is Safari/iOS Autoplay policy
+            if (err.name === 'NotAllowedError') {
+                console.log("Autoplay paused by Safari. Queued to play on first user touch/tap.");
+                this.pendingPlayback = {word: cleanWord, context: cleanContext, onStart, onEnd};
+                if (onEnd) onEnd();
+            } else {
+                console.warn("Audio playback error:", err);
+                triggerFallback(err.name);
+            }
       });
     }
   }
 
   /**
-   * Browser Web Speech API Fallback
+   * Browser Web Speech API Fallback (Only used when explicit or server unreachable)
    */
   speakWebSpeech(cleanWord, cleanContext, onStart = null, onEnd = null) {
     if (!this.synth) {
@@ -147,7 +187,6 @@ class DictationAudio {
     }
     utterance.lang = 'en-US';
 
-    // Map speed to rate
     const rateMap = {
       'slow': 0.70,
       'relaxed': 0.80,
@@ -177,9 +216,13 @@ class DictationAudio {
 
   stop() {
     if (this.audioElement) {
-      this.audioElement.pause();
-      this.audioElement.src = '';
-      this.audioElement = null;
+        try {
+            this.audioElement.pause();
+        } catch (e) {
+        }
+        this.audioElement.onplay = null;
+        this.audioElement.onended = null;
+        this.audioElement.onerror = null;
     }
     if (this.synth && this.synth.speaking) {
       this.synth.cancel();
