@@ -21,24 +21,25 @@ class TestModels:
             assert fetched_folder.lists.count() == 2
             assert l1.folder.name == "4th Grade"
 
-    def test_student_and_list_association(self, app):
+    def test_student_and_bundle_association(self, app):
         with app.app_context():
             student = Student(name="Maya", avatar="🎨")
+            folder = WordListFolder(name="4th Grade", icon="📘")
             wlist1 = WordList(title="List 1", description="Description 1")
             wlist2 = WordList(title="List 2", description="Description 2")
+            folder.lists.extend([wlist1, wlist2])
 
-            db.session.add_all([student, wlist1, wlist2])
+            db.session.add_all([student, folder])
             db.session.flush()
 
-            student.lists.append(wlist1)
-            student.lists.append(wlist2)
+            student.folders.append(folder)
             db.session.commit()
 
             fetched_student = Student.query.filter_by(name="Maya").first()
             assert fetched_student is not None
-            assert fetched_student.lists.count() == 2
-            assert wlist1 in fetched_student.lists
-            assert wlist2 in fetched_student.lists
+            assert fetched_student.folders.count() == 1
+            assert folder in fetched_student.folders
+            assert len(fetched_student.get_all_associated_lists()) == 2
 
     def test_word_list_cascades_words(self, app):
         with app.app_context():

@@ -2,14 +2,14 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env if present
+# Load environment variables from .env if present (with override=True)
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / '.env', override=True)
 
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'default-dev-secret-key-change-me')
-    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
+    ADMIN_PASSWORD = str(os.getenv('ADMIN_PASSWORD', 'admin123')).strip()
 
     # Database configuration
     db_env = os.getenv('DATABASE_URL')

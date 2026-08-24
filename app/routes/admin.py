@@ -1,5 +1,6 @@
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app, jsonify, Response
+import os
 from app.models import db, Student, WordListFolder, WordList, Word, ChallengeAttempt, ChallengeDetail, MissedWord
 from app.services.seeder import seed_database
 from app.services.importer import (
@@ -11,7 +12,6 @@ from app.services.importer import (
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -19,7 +19,6 @@ def admin_required(f):
             flash('Please log in with the administrator password.', 'warning')
             return redirect(url_for('admin.login', next=request.url))
         return f(*args, **kwargs)
-
     return decorated_function
 
 
@@ -30,7 +29,8 @@ def login():
 
     if request.method == 'POST':
         password = request.form.get('password', '').strip()
-        expected_password = current_app.config.get('ADMIN_PASSWORD', 'admin123')
+        expected_password = str(
+            current_app.config.get('ADMIN_PASSWORD') or os.getenv('ADMIN_PASSWORD') or 'admin123').strip()
 
         if password == expected_password:
             session['is_admin'] = True
@@ -61,6 +61,7 @@ def index():
 
     recent_attempts = ChallengeAttempt.query.order_by(ChallengeAttempt.created_at.desc()).limit(8).all()
     students = Student.query.order_by(Student.name).all()
+    folders = WordListFolder.query.order_by(WordListFolder.position, WordListFolder.name).all()
     word_lists = WordList.query.order_by(WordList.id).all()
 
     return render_template(
@@ -72,6 +73,7 @@ def index():
         attempts_count=attempts_count,
         recent_attempts=recent_attempts,
         students=students,
+        folders=folders,
         word_lists=word_lists
     )
 
@@ -82,8 +84,8 @@ def index():
 @admin_required
 def students():
     students_list = Student.query.order_by(Student.name).all()
-    all_lists = WordList.query.order_by(WordList.id).all()
-    return render_template('admin/students.html', students=students_list, all_lists=all_lists)
+    folders_list = WordListFolder.query.order_by(WordListFolder.position, WordListFolder.name).all()
+    return render_template('admin/students.html', students=students_list, folders=folders_list)
 
 
 @admin_bp.route('/students/create', methods=['POST'])
@@ -91,7 +93,7 @@ def students():
 def create_student():
     name = request.form.get('name', '').strip()
     avatar = request.form.get('avatar', '🦊').strip()
-    selected_list_ids = request.form.getlist('list_ids')
+    selected_folder_ids = request.form.getlist('folder_ids')
 
     if not name:
         flash('Student name is required.', 'danger')
@@ -103,18 +105,18 @@ def create_student():
 
     student = Student(name=name, avatar=avatar)
 
-    if selected_list_ids:
-        for lid in selected_list_ids:
-            wlist = db.session.get(WordList, int(lid))
-            if wlist:
-                student.lists.append(wlist)
+    if selected_folder_ids:
+        for fid in selected_folder_ids:
+            folder = db.session.get(WordListFolder, int(fid))
+            if folder:
+                student.folders.append(folder)
     else:
-        for wlist in WordList.query.all():
-            student.lists.append(wlist)
+        for folder in WordListFolder.query.all():
+            student.folders.append(folder)
 
     db.session.add(student)
     db.session.commit()
-    flash(f"Student '{name}' added with {student.lists.count()} associated lists.", 'success')
+    flash(f"Student '{name}' added with {student.folders.count()} assigned bundles.", 'success')
     return redirect(url_for('admin.students'))
 
 
@@ -128,7 +130,7 @@ def edit_student(student_id):
 
     name = request.form.get('name', '').strip()
     avatar = request.form.get('avatar', student.avatar).strip()
-    selected_list_ids = request.form.getlist('list_ids')
+    selected_folder_ids = request.form.getlist('folder_ids')
 
     if not name:
         flash('Student name cannot be empty.', 'danger')
@@ -142,11 +144,11 @@ def edit_student(student_id):
     student.name = name
     student.avatar = avatar
 
-    student.lists = []
-    for lid in selected_list_ids:
-        wlist = db.session.get(WordList, int(lid))
-        if wlist:
-            student.lists.append(wlist)
+    student.folders = []
+    for fid in selected_folder_ids:
+        folder = db.session.get(WordListFolder, int(fid))
+        if folder:
+            student.folders.append(folder)
 
     db.session.commit()
     flash(f"Student '{name}' updated successfully.", 'success')
@@ -165,7 +167,7 @@ def delete_student(student_id):
     return redirect(url_for('admin.students'))
 
 
-# --- Folder Management ---
+# --- Bundle / Folder Management ---
 
 @admin_bp.route('/folders/create', methods=['POST'])
 @admin_required
@@ -175,14 +177,19 @@ def create_folder():
     icon = request.form.get('icon', '📁').strip()
 
     if not name:
-        flash('Folder name is required.', 'danger')
+        flash('Bundle name is required.', 'danger')
         return redirect(url_for('admin.lists'))
 
     pos = WordListFolder.query.count()
     folder = WordListFolder(name=name, description=description, icon=icon, position=pos)
+
+    # Auto-associate new folder with all existing students
+    for s in Student.query.all():
+        s.folders.append(folder)
+
     db.session.add(folder)
     db.session.commit()
-    flash(f"Folder '{name}' created successfully.", 'success')
+    flash(f"Bundle '{name}' created and connected to students.", 'success')
     return redirect(url_for('admin.lists'))
 
 
@@ -191,7 +198,7 @@ def create_folder():
 def edit_folder(folder_id):
     folder = db.session.get(WordListFolder, folder_id)
     if not folder:
-        flash('Folder not found.', 'danger')
+        flash('Bundle not found.', 'danger')
         return redirect(url_for('admin.lists'))
 
     name = request.form.get('name', '').strip()
@@ -199,14 +206,14 @@ def edit_folder(folder_id):
     icon = request.form.get('icon', folder.icon).strip()
 
     if not name:
-        flash('Folder name cannot be empty.', 'danger')
+        flash('Bundle name cannot be empty.', 'danger')
         return redirect(url_for('admin.lists'))
 
     folder.name = name
     folder.description = description
     folder.icon = icon
     db.session.commit()
-    flash(f"Folder '{name}' updated.", 'success')
+    flash(f"Bundle '{name}' updated.", 'success')
     return redirect(url_for('admin.lists'))
 
 
@@ -216,12 +223,9 @@ def delete_folder(folder_id):
     folder = db.session.get(WordListFolder, folder_id)
     if folder:
         name = folder.name
-        # Unlink lists from this folder
-        for wlist in folder.lists:
-            wlist.folder_id = None
         db.session.delete(folder)
         db.session.commit()
-        flash(f"Folder '{name}' removed. Lists inside are now unfiled.", 'info')
+        flash(f"Bundle '{name}' and all its lists removed.", 'info')
     return redirect(url_for('admin.lists'))
 
 
@@ -255,13 +259,8 @@ def create_list():
         category=category
     )
     db.session.add(wlist)
-    db.session.flush()
-
-    for s in Student.query.all():
-        s.lists.append(wlist)
-
     db.session.commit()
-    flash(f"Word list '{title}' created and associated with all students.", 'success')
+    flash(f"Word list '{title}' created.", 'success')
     return redirect(url_for('admin.lists'))
 
 
@@ -273,14 +272,18 @@ def edit_list(list_id):
         flash('List not found.', 'danger')
         return redirect(url_for('admin.lists'))
 
-    wlist.title = request.form.get('title', wlist.title).strip()
+    title = request.form.get('title', '').strip()
+    if not title:
+        flash('List title cannot be empty.', 'danger')
+        return redirect(url_for('admin.lists'))
+
+    wlist.title = title
     wlist.description = request.form.get('description', '').strip()
-    wlist.category = request.form.get('category', wlist.category).strip()
     folder_id = request.form.get('folder_id', type=int)
     wlist.folder_id = folder_id if folder_id else None
 
     db.session.commit()
-    flash(f"Word list '{wlist.title}' updated.", 'success')
+    flash(f"Word list '{wlist.title}' updated successfully.", 'success')
     return redirect(url_for('admin.lists'))
 
 
@@ -375,7 +378,6 @@ def import_page():
 @admin_bp.route('/import/template', methods=['GET'])
 @admin_required
 def download_template():
-    """Returns downloadable CSV template file."""
     return Response(
         DEFAULT_TEMPLATE_CSV,
         mimetype="text/csv",
@@ -386,7 +388,6 @@ def download_template():
 @admin_bp.route('/import/preview', methods=['POST'])
 @admin_required
 def preview_import():
-    """Generates preview analysis for uploaded CSV file or pasted text."""
     csv_text = ''
     if 'csv_file' in request.files and request.files['csv_file'].filename:
         file = request.files['csv_file']
@@ -401,7 +402,6 @@ def preview_import():
 @admin_bp.route('/import/execute', methods=['POST'])
 @admin_required
 def execute_csv_import():
-    """Commits validated preview rows to the database."""
     data = request.get_json()
     if not data or 'rows' not in data:
         return jsonify({'success': False, 'message': 'No data payload received.'}), 400
@@ -412,12 +412,12 @@ def execute_csv_import():
     result = execute_import(rows, student_ids)
     if result.get('success'):
         flash(
-            f"Successfully imported {result['created_words']} words into {result['created_lists']} lists under {result['created_folders']} folders!",
+            f"Successfully imported {result['created_words']} words into {result['created_lists']} lists under {result['created_folders']} bundles!",
             'success')
     return jsonify(result)
 
 
-# --- Association Matrix ---
+# --- Bundle Association Matrix ---
 
 @admin_bp.route('/assignments', methods=['GET', 'POST'])
 @admin_bp.route('/associations', methods=['GET', 'POST'])
@@ -425,31 +425,31 @@ def execute_csv_import():
 def assignments():
     if request.method == 'POST':
         students_all = Student.query.all()
-        lists_all = WordList.query.all()
+        folders_all = WordListFolder.query.all()
 
         for s in students_all:
-            s.lists = []
-            for l in lists_all:
-                key = f"assoc_{s.id}_{l.id}"
+            s.folders = []
+            for f in folders_all:
+                key = f"assoc_{s.id}_{f.id}"
                 if key in request.form:
-                    s.lists.append(l)
+                    s.folders.append(f)
 
         db.session.commit()
-        flash('Student list associations updated successfully.', 'success')
+        flash('Student bundle associations updated successfully.', 'success')
         return redirect(url_for('admin.assignments'))
 
     students_list = Student.query.order_by(Student.name).all()
-    word_lists = WordList.query.order_by(WordList.id).all()
-
+    folders_list = WordListFolder.query.order_by(WordListFolder.position, WordListFolder.name).all()
+    
     assoc_map = {}
     for s in students_list:
-        for l in s.lists:
-            assoc_map[(s.id, l.id)] = True
+        for f in s.folders:
+            assoc_map[(s.id, f.id)] = True
 
     return render_template(
         'admin/assignments.html',
         students=students_list,
-        word_lists=word_lists,
+        folders=folders_list,
         assignment_map=assoc_map
     )
 

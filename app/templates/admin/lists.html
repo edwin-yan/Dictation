@@ -5,14 +5,15 @@
 {% block content %}
 <div class="admin-header-bar">
     <div>
-        <h1 style="font-size: 1.85rem;">📚 Word Lists & Folder Management</h1>
+        <h1 style="font-size: 1.85rem;">📚 Word Lists & Bundles</h1>
         <p style="color: var(--text-muted); font-size: 0.95rem;">
-            Group lists into folders (e.g. 4th Grade, Science), manage vocabulary, and configure context sentences.
+            Group lists into bundles/folders (e.g. 4th Grade, Science), manage vocabulary, and configure context
+            sentences.
         </p>
     </div>
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         <button class="btn btn-secondary" data-modal-open="create-folder-modal">
-            📁 Create Folder
+            📁 Create Bundle
         </button>
         <a href="{{ url_for('admin.import_page') }}" class="btn btn-secondary">
             📥 Import from CSV
@@ -27,14 +28,14 @@
 <nav class="admin-nav">
     <a href="{{ url_for('admin.index') }}" class="admin-nav-link">📊 Overview</a>
     <a href="{{ url_for('admin.students') }}" class="admin-nav-link">👥 Students</a>
-    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link active">📚 Word Lists & Folders ({{ word_lists|length
+    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link active">📚 Word Lists & Bundles ({{ word_lists|length
         }})</a>
     <a href="{{ url_for('admin.import_page') }}" class="admin-nav-link">📥 CSV Import</a>
-    <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link">📋 List Associations</a>
+    <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link">📋 Bundle Associations</a>
     <a href="{{ url_for('admin.history') }}" class="admin-nav-link">🕒 Test History</a>
 </nav>
 
-<!-- Folders Summary Bar -->
+<!-- Folders / Bundles Summary Bar -->
 {% if folders %}
 <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem;">
     {% for f in folders %}
@@ -46,14 +47,14 @@
         </div>
         <div style="display: flex; gap: 0.25rem; margin-left: 0.5rem;">
             <button class="btn btn-secondary btn-sm btn-edit-folder" data-id="{{ f.id }}" data-name="{{ f.name }}"
-                    data-desc="{{ f.description or '' }}" data-icon="{{ f.icon }}" title="Edit Folder"
+                    data-desc="{{ f.description or '' }}" data-icon="{{ f.icon }}" title="Edit Bundle"
                     style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">
                 ✏️
             </button>
             <form method="POST" action="{{ url_for('admin.delete_folder', folder_id=f.id) }}"
-                  onsubmit="return confirm('Remove folder \'{{ f.name }}\'? Lists inside will become unfiled.');"
+                  onsubmit="return confirm('Remove bundle \'{{ f.name }}\'? Lists inside will become unfiled.');"
                   style="display: inline;">
-                <button type="submit" class="btn btn-danger btn-sm" title="Delete Folder"
+                <button type="submit" class="btn btn-danger btn-sm" title="Delete Bundle"
                         style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">
                     🗑️
                 </button>
@@ -85,13 +86,13 @@
 
         <div style="display: flex; gap: 0.4rem;">
             <button
+                    type="button"
                     class="btn btn-secondary btn-sm btn-edit-list"
                     data-id="{{ wlist.id }}"
                     data-title="{{ wlist.title }}"
                     data-description="{{ wlist.description or '' }}"
-                    data-category="{{ wlist.category }}"
                     data-folder-id="{{ wlist.folder_id or '' }}"
-                    title="Edit List Metadata"
+                    title="Edit List Title and Bundle"
             >
                 ✏️ Edit List
             </button>
@@ -165,6 +166,7 @@
                 <td style="text-align: right;">
                     <div style="display: inline-flex; gap: 0.35rem;">
                         <button
+                                type="button"
                                 class="btn btn-secondary btn-sm btn-edit-word"
                                 data-id="{{ w.id }}"
                                 data-word="{{ w.word }}"
@@ -202,24 +204,24 @@
 </div>
 {% endfor %}
 
-<!-- Create Folder Modal -->
+<!-- Create Folder / Bundle Modal -->
 <div class="modal-overlay" id="create-folder-modal">
     <div class="modal-box">
         <div class="modal-header">
-            <h3 style="font-size: 1.25rem;">📁 Create New Folder</h3>
+            <h3 style="font-size: 1.25rem;">📁 Create New Bundle / Folder</h3>
             <button class="modal-close" data-modal-close>&times;</button>
         </div>
         <form method="POST" action="{{ url_for('admin.create_folder') }}">
             <div class="form-group">
-                <label class="form-label" for="folder-name">Folder Name *</label>
+                <label class="form-label" for="folder-name">Bundle Name *</label>
                 <input type="text" id="folder-name" name="name" class="form-control"
-                       placeholder="e.g. 5th Grade Vocabulary" required>
+                       placeholder="e.g. 4th Grade Non-Negotiable" required>
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="folder-desc">Description</label>
                 <textarea id="folder-desc" name="description" class="form-control" rows="2"
-                          placeholder="Folder notes..."></textarea>
+                          placeholder="Bundle notes for students..."></textarea>
             </div>
 
             <div class="form-group">
@@ -237,22 +239,22 @@
 
             <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
                 <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
-                <button type="submit" class="btn btn-primary">Create Folder</button>
+                <button type="submit" class="btn btn-primary">Create Bundle</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Edit Folder Modal -->
+<!-- Edit Folder / Bundle Modal -->
 <div class="modal-overlay" id="edit-folder-modal">
     <div class="modal-box">
         <div class="modal-header">
-            <h3 style="font-size: 1.25rem;">✏️ Edit Folder</h3>
+            <h3 style="font-size: 1.25rem;">✏️ Edit Bundle</h3>
             <button class="modal-close" data-modal-close>&times;</button>
         </div>
         <form id="edit-folder-form" method="POST" action="">
             <div class="form-group">
-                <label class="form-label" for="edit-folder-name">Folder Name *</label>
+                <label class="form-label" for="edit-folder-name">Bundle Name *</label>
                 <input type="text" id="edit-folder-name" name="name" class="form-control" required>
             </div>
 
@@ -291,9 +293,9 @@
         </div>
         <form method="POST" action="{{ url_for('admin.create_list') }}">
             <div class="form-group">
-                <label class="form-label" for="create-folder-select">Folder / Category</label>
+                <label class="form-label" for="create-folder-select">Bundle / Folder</label>
                 <select id="create-folder-select" name="folder_id" class="form-control">
-                    <option value="">-- No Folder (Unfiled) --</option>
+                    <option value="">-- No Bundle (Unfiled) --</option>
                     {% for f in folders %}
                     <option value="{{ f.id }}">{{ f.icon }} {{ f.name }}</option>
                     {% endfor %}
@@ -329,9 +331,9 @@
         </div>
         <form id="edit-list-form" method="POST" action="">
             <div class="form-group">
-                <label class="form-label" for="edit-list-folder">Folder / Category</label>
+                <label class="form-label" for="edit-list-folder">Bundle / Folder</label>
                 <select id="edit-list-folder" name="folder_id" class="form-control">
-                    <option value="">-- No Folder (Unfiled) --</option>
+                    <option value="">-- No Bundle (Unfiled) --</option>
                     {% for f in folders %}
                     <option value="{{ f.id }}">{{ f.icon }} {{ f.name }}</option>
                     {% endfor %}
@@ -386,36 +388,4 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
-<script>
-    // Edit Folder Modal Handler
-    document.querySelectorAll('.btn-edit-folder').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = btn.getAttribute('data-id');
-            const name = btn.getAttribute('data-name');
-            const desc = btn.getAttribute('data-desc');
-            const icon = btn.getAttribute('data-icon');
-
-            const modal = document.getElementById('edit-folder-modal');
-            const form = document.getElementById('edit-folder-form');
-            if (modal && form) {
-                form.action = `/admin/folders/${id}/edit`;
-                form.querySelector('[name="name"]').value = name;
-                form.querySelector('[name="description"]').value = desc;
-                form.querySelector('[name="icon"]').value = icon;
-                modal.classList.add('active');
-            }
-        });
-    });
-
-    // Edit List Modal Folder Handler
-    document.querySelectorAll('.btn-edit-list').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const folderId = btn.getAttribute('data-folder-id');
-            const form = document.getElementById('edit-list-form');
-            if (form && folderId) {
-                form.querySelector('[name="folder_id"]').value = folderId;
-            }
-        });
-    });
-</script>
 {% endblock %}

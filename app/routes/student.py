@@ -45,17 +45,16 @@ def dashboard():
     if not current_student:
         current_student = students[0]
 
-    # Fetch associated lists for current student
-    associated_lists_raw = current_student.lists.order_by(WordList.id).all()
-
-    # Group lists by folder
-    folders_all = WordListFolder.query.order_by(WordListFolder.position, WordListFolder.name).all()
-
+    # Fetch assigned bundles for current student
+    assigned_folders = current_student.folders.order_by(WordListFolder.position, WordListFolder.name).all()
+    direct_lists = current_student.lists.order_by(WordList.id).all()
+    
     folder_groups = []
     processed_list_ids = set()
+    total_assigned_lists = 0
 
-    for folder in folders_all:
-        folder_lists = [l for l in associated_lists_raw if l.folder_id == folder.id]
+    for folder in assigned_folders:
+        folder_lists = folder.lists.order_by(WordList.id).all()
         if folder_lists:
             enriched_lists = []
             for wlist in folder_lists:
@@ -74,6 +73,7 @@ def dashboard():
                     'words': wlist.words.all()
                 })
                 processed_list_ids.add(wlist.id)
+                total_assigned_lists += 1
 
             folder_groups.append({
                 'id': folder.id,
@@ -83,8 +83,8 @@ def dashboard():
                 'lists': enriched_lists
             })
 
-    # Any unfiled lists
-    unfiled_lists = [l for l in associated_lists_raw if l.id not in processed_list_ids]
+    # Any standalone unfiled lists
+    unfiled_lists = [l for l in direct_lists if l.id not in processed_list_ids]
     if unfiled_lists:
         enriched_unfiled = []
         for wlist in unfiled_lists:
@@ -102,6 +102,7 @@ def dashboard():
                 'latest_attempt': latest_attempt,
                 'words': wlist.words.all()
             })
+            total_assigned_lists += 1
 
         folder_groups.append({
             'id': 0,
@@ -134,7 +135,7 @@ def dashboard():
         students=students,
         current_student=current_student,
         folder_groups=folder_groups,
-        total_assigned_lists=len(associated_lists_raw),
+        total_assigned_lists=total_assigned_lists,
         missed_words=missed_words,
         recent_attempts=recent_attempts,
         total_challenges=total_challenges,

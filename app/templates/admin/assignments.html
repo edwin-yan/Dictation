@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}List Associations - Admin{% endblock %}
+{% block title %}Bundle Associations - Admin{% endblock %}
 
 {% block content %}
 <div class="admin-header-bar">
     <div>
-        <h1 style="font-size: 1.85rem;">📋 Student List Associations</h1>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">Easily connect and toggle which word lists appear on
-            each student's dashboard.</p>
+        <h1 style="font-size: 1.85rem;">📋 Bundle Associations Matrix</h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+            Assign entire word bundles (e.g. 4th Grade Non-Negotiable, Science) to students with one click.
+        </p>
     </div>
 </div>
 
@@ -15,39 +16,44 @@
 <nav class="admin-nav">
     <a href="{{ url_for('admin.index') }}" class="admin-nav-link">📊 Overview</a>
     <a href="{{ url_for('admin.students') }}" class="admin-nav-link">👥 Students</a>
-    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link">📚 Word Lists</a>
-    <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link active">📋 List Associations</a>
+    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link">📚 Word Lists & Bundles</a>
+    <a href="{{ url_for('admin.import_page') }}" class="admin-nav-link">📥 CSV Import</a>
+    <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link active">📋 Bundle Associations</a>
     <a href="{{ url_for('admin.history') }}" class="admin-nav-link">🕒 Test History</a>
 </nav>
 
-{% if students and word_lists %}
+{% if students and folders %}
 <form method="POST" action="{{ url_for('admin.assignments') }}">
-    <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card">
         <div class="card-header">
-            <h3 class="card-title">Association Grid (Students × Word Lists)</h3>
+            <h3 class="card-title">Bundle Connection Matrix</h3>
             <button type="submit" class="btn btn-primary btn-lg">
-                💾 Save Associations
+                💾 Save All Associations
             </button>
         </div>
 
         <div class="table-responsive">
-            <table class="dictation-table matrix-table">
+            <table class="dictation-table">
                 <thead>
                 <tr>
-                    <th style="min-width: 200px;">Student</th>
-                    {% for l in word_lists %}
-                    <th style="min-width: 140px; text-align: center;">
-                        <div>{{ l.title }}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-top: 0.2rem;">
-                            {{ l.words.count() }} Words
+                    <th style="min-width: 180px;">Student</th>
+                    {% for f in folders %}
+                    <th style="text-align: center; min-width: 170px;">
+                        <div>
+                            <div style="font-size: 1.1rem;">{{ f.icon }}</div>
+                            <div style="font-weight: 700; color: var(--slate-900);">{{ f.name }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">
+                                {{ f.lists.count() }} lists ({{ f.to_dict()['total_words'] }} words)
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm select-all-col"
+                                    data-folder-id="{{ f.id }}"
+                                    style="font-size: 0.7rem; padding: 0.15rem 0.4rem; margin-top: 0.35rem;">
+                                Toggle All
+                            </button>
                         </div>
-                        <button type="button" class="btn btn-secondary btn-sm select-all-col" data-list-id="{{ l.id }}"
-                                style="font-size: 0.7rem; padding: 0.15rem 0.45rem; margin-top: 0.35rem;">
-                            Toggle All
-                        </button>
                     </th>
                     {% endfor %}
-                    <th style="width: 100px; text-align: center;">Row Action</th>
+                    <th style="text-align: center; width: 100px;">Row Action</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -56,16 +62,17 @@
                     <td>
                         <div style="display: flex; align-items: center; gap: 0.6rem;">
                             <span style="font-size: 1.3rem;">{{ s.avatar }}</span>
-                            <span style="font-weight: 700;">{{ s.name }}</span>
+                            <span style="font-weight: 700; color: var(--slate-900);">{{ s.name }}</span>
                         </div>
                     </td>
-                    {% for l in word_lists %}
+                    {% for f in folders %}
                     <td style="text-align: center;">
                         <input
                                 type="checkbox"
+                                name="assoc_{{ s.id }}_{{ f.id }}"
                                 class="checkbox-toggle"
-                                name="assoc_{{ s.id }}_{{ l.id }}"
-                                {% if assignment_map.get((s.id, l.id)) %}checked{% endif %}
+                                {% if assignment_map.get((s.id, f.id)) %}checked{% endif %}
+                                title="Connect {{ f.name }} to {{ s.name }}"
                         >
                     </td>
                     {% endfor %}
@@ -81,18 +88,18 @@
             </table>
         </div>
 
-        <div style="padding: 1.25rem; border-top: 1px solid var(--slate-100); display: flex; justify-content: flex-end;">
+        <div style="display: flex; justify-content: flex-end; padding-top: 1.5rem; border-top: 1px solid var(--slate-200); margin-top: 1.5rem;">
             <button type="submit" class="btn btn-primary btn-lg">
-                💾 Save Associations
+                💾 Save All Associations
             </button>
         </div>
     </div>
 </form>
 {% else %}
 <div class="card" style="text-align: center; padding: 3rem 1.5rem;">
-    <h3>Incomplete Setup</h3>
-    <p style="color: var(--text-muted); margin: 1rem 0;">Please ensure you have created both students and word lists
-        before configuring associations.</p>
+    <h3>No Students or Bundles Available</h3>
+    <p style="color: var(--text-muted); margin: 1rem 0;">Please create students and bundles in the admin portal
+        first.</p>
 </div>
 {% endif %}
 {% endblock %}

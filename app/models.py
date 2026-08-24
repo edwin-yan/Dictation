@@ -3,18 +3,23 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-
 def utc_now():
     return datetime.now(timezone.utc)
 
 
-# Association table between students and word lists
+# Association table between students and word list folders/bundles
+student_folders = db.Table(
+    'student_folders',
+    db.Column('student_id', db.Integer, db.ForeignKey('students.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('folder_id', db.Integer, db.ForeignKey('word_list_folders.id', ondelete='CASCADE'), primary_key=True)
+)
+
+# Association table between students and standalone word lists (optional fallback)
 student_lists = db.Table(
     'student_lists',
     db.Column('student_id', db.Integer, db.ForeignKey('students.id', ondelete='CASCADE'), primary_key=True),
     db.Column('list_id', db.Integer, db.ForeignKey('word_lists.id', ondelete='CASCADE'), primary_key=True)
 )
-
 
 class Student(db.Model):
     __tablename__ = 'students'
@@ -24,15 +29,34 @@ class Student(db.Model):
     avatar = db.Column(db.String(50), default='🦊')
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
 
-    # Associated lists
+    # Associated bundles / folders
+    folders = db.relationship('WordListFolder', secondary=student_folders,
+                              backref=db.backref('students', lazy='dynamic'), lazy='dynamic')
+
+    # Direct associated lists
     lists = db.relationship('WordList', secondary=student_lists, backref=db.backref('students', lazy='dynamic'),
                             lazy='dynamic')
-
+    
     # Activity history
     attempts = db.relationship('ChallengeAttempt', backref='student', lazy='dynamic', cascade='all, delete-orphan',
                                order_by='desc(ChallengeAttempt.created_at)')
     missed_words = db.relationship('MissedWord', backref='student', lazy='dynamic', cascade='all, delete-orphan',
                                    order_by='desc(MissedWord.mistake_count)')
+
+    def get_all_associated_lists(self):
+        """Returns all lists from assigned folders plus direct lists."""
+        folder_lists = []
+        for folder in self.folders.all():
+            folder_lists.extend(folder.lists.all())
+        direct_lists = self.lists.all()
+        # Unique list preservation
+        seen = set()
+        result = []
+        for l in folder_lists + direct_lists:
+            if l.id not in seen:
+                seen.add(l.id)
+                result.append(l)
+        return result
 
     def to_dict(self):
         return {
@@ -42,12 +66,13 @@ class Student(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'total_challenges': self.attempts.count(),
             'missed_count': self.missed_words.filter_by(is_resolved=False).count(),
-            'associated_list_ids': [l.id for l in self.lists.all()]
+            'associated_folder_ids': [f.id for f in self.folders.all()],
+            'associated_list_ids': [l.id for l in self.get_all_associated_lists()]
         }
 
 
 class WordListFolder(db.Model):
-    """Organizes word lists into top-level groups/folders (e.g. '4th Grade', '5th Grade', 'Science Vocabulary')."""
+    """Organizes word lists into top-level bundles/folders (e.g. '4th Grade', '5th Grade', 'Science Vocabulary')."""
     __tablename__ = 'word_list_folders'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -58,7 +83,8 @@ class WordListFolder(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
 
     # Lists in this folder
-    lists = db.relationship('WordList', backref='folder', lazy='dynamic', order_by='WordList.id')
+    lists = db.relationship('WordList', backref='folder', lazy='dynamic', cascade='all, delete-orphan',
+                            order_by='WordList.id')
 
     def to_dict(self, include_lists=False):
         data = {
@@ -80,7 +106,7 @@ class WordList(db.Model):
     __tablename__ = 'word_lists'
 
     id = db.Column(db.Integer, primary_key=True)
-    folder_id = db.Column(db.Integer, db.ForeignKey('word_list_folders.id', ondelete='SET NULL'), nullable=True,
+    folder_id = db.Column(db.Integer, db.ForeignKey('word_list_folders.id', ondelete='CASCADE'), nullable=True,
                           index=True)
     title = db.Column(db.String(150), nullable=False, index=True)
     description = db.Column(db.Text, nullable=True)

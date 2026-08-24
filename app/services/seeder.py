@@ -252,9 +252,8 @@ def seed_database(app=None, force=False):
             name=s_info["name"],
             avatar=s_info["avatar"]
         )
-        # Associate all lists with student
-        for wlist in created_lists.values():
-            student.lists.append(wlist)
+        # Associate folder/bundle with student
+        student.folders.append(grade4_folder)
 
         db.session.add(student)
         db.session.flush()

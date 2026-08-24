@@ -6,8 +6,8 @@
 <div class="admin-header-bar">
     <div>
         <h1 style="font-size: 1.85rem;">👥 Student Management</h1>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">Add students, choose their avatar, and associate
-            spelling lists.</p>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Add students, choose their avatar, and assign word
+            bundles.</p>
     </div>
     <button class="btn btn-primary" data-modal-open="create-student-modal">
         ➕ Add New Student
@@ -18,8 +18,9 @@
 <nav class="admin-nav">
     <a href="{{ url_for('admin.index') }}" class="admin-nav-link">📊 Overview</a>
     <a href="{{ url_for('admin.students') }}" class="admin-nav-link active">👥 Students ({{ students|length }})</a>
-    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link">📚 Word Lists</a>
-    <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link">📋 List Associations</a>
+    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link">📚 Word Lists & Bundles</a>
+    <a href="{{ url_for('admin.import_page') }}" class="admin-nav-link">📥 CSV Import</a>
+    <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link">📋 Bundle Associations</a>
     <a href="{{ url_for('admin.history') }}" class="admin-nav-link">🕒 Test History</a>
 </nav>
 
@@ -30,7 +31,7 @@
             <thead>
             <tr>
                 <th>Student</th>
-                <th>Associated Lists</th>
+                <th>Assigned Bundles</th>
                 <th>Quests Done</th>
                 <th>Tricky Words</th>
                 <th>Created</th>
@@ -54,7 +55,13 @@
                     </div>
                 </td>
                 <td>
-                    <span class="badge badge-primary">{{ s.lists.count() }} Lists</span>
+                    {% if s.folders.count() > 0 %}
+                    {% for f in s.folders %}
+                    <span class="badge badge-primary" style="margin-right: 0.25rem;">{{ f.icon }} {{ f.name }}</span>
+                    {% endfor %}
+                    {% else %}
+                    <span class="badge badge-gray">No Bundles Assigned</span>
+                    {% endif %}
                 </td>
                 <td><strong>{{ s.attempts.count() }}</strong> completed</td>
                 <td>
@@ -75,12 +82,13 @@
                             👁️ View
                         </a>
                         <button
+                                type="button"
                                 class="btn btn-secondary btn-sm btn-edit-student"
                                 data-id="{{ s.id }}"
                                 data-name="{{ s.name }}"
                                 data-avatar="{{ s.avatar }}"
-                                data-lists="{{ s.lists.all() | map(attribute='id') | list | tojson }}"
-                                title="Edit Student"
+                                data-folders="{{ s.folders.all() | map(attribute='id') | list | tojson }}"
+                                title="Edit Student Profile & Bundles"
                         >
                             ✏️ Edit
                         </button>
@@ -132,13 +140,15 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">Associate Word Lists</label>
-                <div style="max-height: 160px; overflow-y: auto; background: var(--slate-50); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--slate-200);">
-                    {% for l in all_lists %}
-                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; cursor: pointer; font-size: 0.9rem;">
-                        <input type="checkbox" name="list_ids" value="{{ l.id }}" checked>
-                        <span>{{ l.title }} ({{ l.words.count() }} words)</span>
+                <label class="form-label">Assign Word Bundles</label>
+                <div style="max-height: 180px; overflow-y: auto; background: var(--slate-50); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--slate-200);">
+                    {% for f in folders %}
+                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; cursor: pointer; font-size: 0.95rem;">
+                        <input type="checkbox" name="folder_ids" value="{{ f.id }}" checked>
+                        <span><strong>{{ f.icon }} {{ f.name }}</strong> <small style="color: var(--text-muted);">({{ f.lists.count() }} lists, {{ f.to_dict()['total_words'] }} words)</small></span>
                     </label>
+                    {% else %}
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">No bundles created yet.</p>
                     {% endfor %}
                 </div>
             </div>
@@ -155,7 +165,7 @@
 <div class="modal-overlay" id="edit-student-modal">
     <div class="modal-box">
         <div class="modal-header">
-            <h3 style="font-size: 1.25rem;">✏️ Edit Student Profile</h3>
+            <h3 style="font-size: 1.25rem;">✏️ Edit Student Profile & Bundles</h3>
             <button class="modal-close" data-modal-close>&times;</button>
         </div>
         <form id="edit-student-form" method="POST" action="">
@@ -183,14 +193,14 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">Associate Word Lists</label>
-                <div id="edit-student-lists-container"
-                     style="max-height: 160px; overflow-y: auto; background: var(--slate-50); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--slate-200);">
-                    {% for l in all_lists %}
-                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; cursor: pointer; font-size: 0.9rem;">
-                        <input type="checkbox" name="list_ids" value="{{ l.id }}" class="edit-list-checkbox"
-                               id="edit-list-{{ l.id }}">
-                        <span>{{ l.title }} ({{ l.words.count() }} words)</span>
+                <label class="form-label">Assign Word Bundles</label>
+                <div id="edit-student-folders-container"
+                     style="max-height: 180px; overflow-y: auto; background: var(--slate-50); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--slate-200);">
+                    {% for f in folders %}
+                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; cursor: pointer; font-size: 0.95rem;">
+                        <input type="checkbox" name="folder_ids" value="{{ f.id }}" class="edit-folder-checkbox"
+                               id="edit-folder-{{ f.id }}">
+                        <span><strong>{{ f.icon }} {{ f.name }}</strong> <small style="color: var(--text-muted);">({{ f.lists.count() }} lists, {{ f.to_dict()['total_words'] }} words)</small></span>
                     </label>
                     {% endfor %}
                 </div>
@@ -207,31 +217,4 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
-<script>
-    // Populate edit student modal checkboxes
-    document.querySelectorAll('.btn-edit-student').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const studentId = btn.getAttribute('data-id');
-            const name = btn.getAttribute('data-name');
-            const avatar = btn.getAttribute('data-avatar');
-            const listIds = JSON.parse(btn.getAttribute('data-lists') || '[]');
-
-            const modal = document.getElementById('edit-student-modal');
-            const form = document.getElementById('edit-student-form');
-
-            if (modal && form) {
-                form.action = `/admin/students/${studentId}/edit`;
-                form.querySelector('[name="name"]').value = name;
-                form.querySelector('[name="avatar"]').value = avatar;
-
-                // Set checkboxes
-                form.querySelectorAll('.edit-list-checkbox').forEach(cb => {
-                    cb.checked = listIds.includes(parseInt(cb.value));
-                });
-
-                modal.classList.add('active');
-            }
-        });
-    });
-</script>
 {% endblock %}
