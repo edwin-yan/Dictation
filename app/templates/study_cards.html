@@ -56,25 +56,48 @@
 
     .card-word-front {
         font-family: var(--font-heading);
-        font-size: 3.25rem;
+        font-size: clamp(2rem, 7vw, 3.25rem);
         font-weight: 800;
         color: var(--slate-900);
         margin-bottom: 1rem;
         letter-spacing: -0.01em;
+        word-break: break-word;
+        max-width: 100%;
     }
 
     .card-sentence-back {
-        font-size: 1.35rem;
+        font-size: clamp(1.05rem, 3.5vw, 1.35rem);
         color: var(--slate-800);
         line-height: 1.5;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
         font-style: italic;
     }
 
     .card-hint {
-        font-size: 0.85rem;
+        font-size: 0.825rem;
         color: var(--slate-400);
-        margin-top: 1rem;
+        margin-top: 0.75rem;
+    }
+
+    @media (max-width: 640px) {
+        .flashcard-scene {
+            height: 300px;
+            margin: 1rem auto;
+        }
+
+        .flashcard-face {
+            padding: 1.5rem 1.15rem;
+        }
+
+        .study-nav-controls {
+            gap: 0.5rem !important;
+        }
+
+        .study-nav-controls .btn {
+            min-width: 0 !important;
+            padding: 0.65rem 0.85rem !important;
+            font-size: 0.9rem !important;
+        }
     }
 </style>
 {% endblock %}
@@ -88,57 +111,60 @@
             ← Back to Dashboard
         </a>
         <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span class="badge badge-primary">{{ student.avatar }} {{ student.name }}</span>
             <button class="btn btn-secondary btn-sm" id="btn-shuffle" title="Shuffle study cards">
                 🔀 Shuffle
             </button>
+            <span class="badge badge-primary">{{ word_list.title }}</span>
         </div>
     </div>
 
-    <div style="text-align: center;">
+    <div style="text-align: center; margin-bottom: 1rem;">
         <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">🎴 Study Flashcards: {{ word_list.title }}</h1>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">
-            Card <strong id="card-index-text">1</strong> of <strong>{{ words|length }}</strong> • Click card to flip
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Card <strong id="card-index-text">1</strong> of <strong>{{ words|length }}</strong> • Tap card or press
+            [Space] to flip
         </p>
     </div>
 
-    <!-- Interactive 3D Flip Card -->
+    <!-- 3D Flashcard Scene -->
     <div class="flashcard-scene" id="flashcard-scene">
-        <div class="flashcard" id="study-card">
-            <!-- Front Face (Word) -->
+        <div class="flashcard" id="study-card" title="Click or tap to flip">
+            <!-- Front of Card: Word -->
             <div class="flashcard-face flashcard-front">
                 <span class="badge badge-gray"
                       style="position: absolute; top: 1.25rem; left: 1.25rem;">Word Front</span>
-                <div class="card-word-front" id="front-word">...</div>
-                <button class="btn btn-primary btn-sm" id="front-audio-btn" style="border-radius: var(--radius-full);">
-                    🔊 Listen
+                <h2 class="card-word-front" id="front-word">...</h2>
+                <button class="btn btn-secondary btn-sm" id="front-audio-btn"
+                        style="border-radius: var(--radius-full);">
+                    🔊 Listen to Word
                 </button>
-                <span class="card-hint">Click card or press [Space] to see sentence</span>
+                <span class="card-hint">Tap card or press [Space] to flip</span>
             </div>
 
-            <!-- Back Face (Sentence & Cadence) -->
+            <!-- Back of Card: Context Sentence -->
             <div class="flashcard-face flashcard-back">
                 <span class="badge badge-primary" style="position: absolute; top: 1.25rem; left: 1.25rem;">Context Sentence</span>
-                <h3 id="back-word-title" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.75rem;">
+                <h3 id="back-word-title" style="font-size: 1.4rem; color: var(--primary); margin-bottom: 0.5rem;">
                     ...</h3>
                 <p class="card-sentence-back" id="back-sentence">...</p>
                 <button class="btn btn-success btn-sm" id="back-audio-btn" style="border-radius: var(--radius-full);">
                     🔊 Listen with Context
                 </button>
-                <span class="card-hint">Click card or press [Space] to flip back</span>
+                <span class="card-hint">Tap card or press [Space] to flip back</span>
             </div>
         </div>
     </div>
 
     <!-- Study Navigation Controls -->
-    <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-bottom: 2rem;">
-        <button class="btn btn-secondary btn-lg" id="btn-prev" style="min-width: 130px;">
-            ⬅️ Previous
+    <div class="study-nav-controls"
+         style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+        <button class="btn btn-secondary btn-lg" id="btn-prev" style="min-width: 120px; flex: 1; max-width: 150px;">
+            ⬅️ Prev
         </button>
-        <button class="btn btn-primary btn-lg" id="btn-flip" style="min-width: 140px;">
+        <button class="btn btn-primary btn-lg" id="btn-flip" style="min-width: 130px; flex: 1.2; max-width: 170px;">
             🔄 Flip Card
         </button>
-        <button class="btn btn-secondary btn-lg" id="btn-next" style="min-width: 130px;">
+        <button class="btn btn-secondary btn-lg" id="btn-next" style="min-width: 120px; flex: 1; max-width: 150px;">
             Next ➡️
         </button>
     </div>

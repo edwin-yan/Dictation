@@ -198,6 +198,38 @@ a:hover {
     text-transform: uppercase;
 }
 
+/* Sleek Navbar Audio Settings Button */
+.nav-audio-btn {
+    border-radius: var(--radius-full);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.85rem;
+    background: #ffffff;
+    border: 1px solid var(--slate-300);
+    color: var(--slate-800);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.nav-audio-btn:hover {
+    background: var(--slate-100);
+    border-color: var(--slate-400);
+    transform: translateY(-1px);
+}
+
+.nav-audio-badge {
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--radius-full);
+    font-size: 0.775rem;
+}
+
 /* Layout Main Container */
 .main-content {
     flex: 1;
@@ -1105,38 +1137,140 @@ a:hover {
     .dashboard-grid {
         grid-template-columns: 1fr;
     }
+
+    .admin-nav {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 0.5rem;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 @media (max-width: 640px) {
+    .main-content {
+        padding: 1rem 0.85rem 2.5rem;
+    }
+
     .navbar-container {
-        padding: 0.6rem 0.85rem;
+        padding: 0.6rem 0.75rem;
+        gap: 0.5rem;
     }
 
     .brand-text {
         display: none;
     }
 
+    .nav-actions {
+        gap: 0.35rem;
+    }
+
+    .nav-audio-btn {
+        padding: 0.3rem 0.55rem;
+    }
+
+    .nav-audio-badge {
+        font-size: 0.7rem;
+        padding: 0.1rem 0.4rem;
+    }
+
+    .student-select {
+        max-width: 120px;
+        font-size: 0.8rem;
+    }
+
     .student-hero {
         flex-direction: column;
         text-align: center;
         gap: 1.25rem;
+        padding: 1.5rem 1.25rem;
     }
 
     .hero-left {
         flex-direction: column;
+        align-items: center;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-number {
+        font-size: 1.6rem;
+    }
+
+    .stat-label {
+        font-size: 0.775rem;
+    }
+
+    .list-card {
+        padding: 1.25rem;
+    }
+
+    .list-actions {
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 1.25rem;
+    }
+
+    .list-actions .btn {
+        flex: 1;
+        min-width: 120px;
+        justify-content: center;
+        text-align: center;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.875rem;
     }
 
     .test-stage-card {
         padding: 2rem 1.25rem;
+        gap: 1.5rem;
     }
 
     .test-input {
         font-size: 1.5rem;
+        padding: 0.75rem 1rem;
     }
 
     .audio-speaker-button {
-        width: 90px;
-        height: 90px;
+        width: 110px;
+        height: 110px;
+    }
+
+    .audio-icon {
+        font-size: 2.75rem;
+    }
+
+    .audio-label {
+        font-size: 0.8rem;
+    }
+
+    .modal-box {
+        padding: 1.5rem 1.25rem;
+        width: 94%;
+        max-width: 440px;
+    }
+
+    .results-hero {
+        padding: 2rem 1.25rem;
+    }
+
+    .results-hero h1 {
+        font-size: 1.5rem;
+    }
+
+    .score-circle {
+        width: 140px;
+        height: 140px;
+        margin: 1.25rem auto;
+    }
+
+    .score-circle .score-number {
+        font-size: 2.25rem;
     }
 
     .word-row {

@@ -24,28 +24,17 @@
       </a>
 
       <div class="nav-actions">
-        <!-- Audio Engine & Speed Controls -->
-        <div class="student-selector-form" title="Choose Voice Engine">
-          <select class="student-select" id="global-engine-select" style="font-size: 0.825rem;">
-            <option value="neural" selected>🎙️ HD Neural Voice</option>
-            <option value="browser">🔊 Local Browser Voice</option>
-          </select>
-        </div>
-
-        <div class="student-selector-form" title="Adjust voice reading speed for students">
-          <span style="font-size: 0.95rem;">⚡</span>
-          <select class="student-select" id="global-speed-select" style="font-size: 0.825rem;">
-            <option value="slow">0.70x (Slow)</option>
-            <option value="relaxed" selected>0.80x (Kid Paced)</option>
-            <option value="normal">0.90x (Standard)</option>
-            <option value="fast">1.05x (Faster)</option>
-          </select>
-        </div>
+          <!-- Compact Audio Settings Trigger Button -->
+          <button type="button" class="btn btn-secondary btn-sm nav-audio-btn" id="btn-audio-settings"
+                  data-modal-open="audio-settings-modal" title="Adjust Voice, Persona & Speed Settings">
+              <span style="font-size: 1rem;">🔊</span>
+              <span id="nav-audio-badge" class="nav-audio-badge">Aria • 0.8x</span>
+          </button>
 
         <!-- Student Switcher (shown on non-admin pages) -->
         {% if students and request.endpoint and not request.endpoint.startswith('admin.') %}
         <form class="student-selector-form" id="student-switch-form" action="{{ url_for('student.dashboard') }}" method="GET">
-          <span style="font-size: 1.1rem;">👤</span>
+            <span style="font-size: 1.05rem;">👤</span>
           <select class="student-select" name="student_id" id="navbar-student-select">
             {% for s in students %}
             <option value="{{ s.id }}" {% if current_student and current_student.id == s.id %}selected{% endif %}>
@@ -72,6 +61,81 @@
       </div>
     </div>
   </header>
+
+  <!-- Audio Settings Modal -->
+  <div class="modal-overlay" id="audio-settings-modal">
+      <div class="modal-box" style="max-width: 480px;">
+          <div class="modal-header">
+              <h3 style="font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                  🎙️ Voice & Audio Settings
+              </h3>
+              <button class="modal-close" data-modal-close>&times;</button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+              <!-- Voice Engine Selection -->
+              <div>
+                  <label class="form-label" for="modal-engine-select"
+                         style="font-weight: 600; margin-bottom: 0.35rem; display: block;">
+                      Audio Engine
+                  </label>
+                  <select class="form-input" id="modal-engine-select" style="font-size: 0.95rem;">
+                      <option value="neural" selected>🎙️ Microsoft Azure HD Neural Voice (Recommended)</option>
+                      <option value="browser">🔊 Local Browser Voice (100% Offline)</option>
+                  </select>
+                  <small style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem; display: block;">
+                      HD Neural delivers high-fidelity studio AI voices. Local Browser uses device synthesis.
+                  </small>
+              </div>
+
+              <!-- Voice Persona (Only when Neural is selected) -->
+              <div id="modal-voice-wrapper">
+                  <label class="form-label" for="modal-voice-select"
+                         style="font-weight: 600; margin-bottom: 0.35rem; display: block;">
+                      Voice Persona
+                  </label>
+                  <select class="form-input" id="modal-voice-select" style="font-size: 0.95rem;">
+                      <option value="aria" selected>👩‍🏫 Aria — Expressive & Natural Female Voice (Default)</option>
+                      <option value="ana">👧 Ana — Friendly Child Voice</option>
+                      <option value="jenny">👩 Jenny — Warm, Clear Female Voice</option>
+                      <option value="guy">👨 Guy — Crisp, Articulate Male Voice</option>
+                      <option value="christopher">👨‍🏫 Christopher — Calm & Warm Male Voice</option>
+                  </select>
+              </div>
+
+              <!-- Speaking Speed -->
+              <div>
+                  <label class="form-label" for="modal-speed-select"
+                         style="font-weight: 600; margin-bottom: 0.35rem; display: block;">
+                      Speaking Speed
+                  </label>
+                  <select class="form-input" id="modal-speed-select" style="font-size: 0.95rem;">
+                      <option value="slow">0.70x — Extra Slow (Great for younger kids)</option>
+                      <option value="relaxed" selected>0.80x — Kid-Friendly Paced (Default)</option>
+                      <option value="normal">0.90x — Standard Speed</option>
+                      <option value="fast">1.05x — Faster</option>
+                  </select>
+              </div>
+
+              <!-- Sample Voice Test Box -->
+              <div style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-lg); padding: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                      <strong style="font-size: 0.9rem; color: var(--slate-900); display: block;">Test Settings</strong>
+                      <span style="font-size: 0.8rem; color: var(--text-muted);">Listen to a quick sample sentence</span>
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-test-sample-audio">
+                      ▶️ Play Sample
+                  </button>
+              </div>
+          </div>
+
+          <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+              <button type="button" class="btn btn-primary" data-modal-close>
+                  Save & Done
+              </button>
+          </div>
+      </div>
+  </div>
 
   <!-- Main Content Container -->
   <main class="main-content">
@@ -101,24 +165,87 @@
   <script src="{{ url_for('static', filename='js/speech.js') }}"></script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   <script>
-    // Sync speed and engine dropdowns with dictationAudio
+      // Sync Audio Settings Modal with dictationAudio engine
     document.addEventListener('DOMContentLoaded', () => {
-      const speedSelect = document.getElementById('global-speed-select');
-      const engineSelect = document.getElementById('global-engine-select');
+        const modalSpeed = document.getElementById('modal-speed-select');
+        const modalEngine = document.getElementById('modal-engine-select');
+        const modalVoice = document.getElementById('modal-voice-select');
+        const voiceWrapper = document.getElementById('modal-voice-wrapper');
+        const navBadge = document.getElementById('nav-audio-badge');
+        const btnTestAudio = document.getElementById('btn-test-sample-audio');
+
+        function updateNavBadge() {
+            if (!window.dictationAudio || !navBadge) return;
+            const engine = window.dictationAudio.engine || 'neural';
+            const speed = window.dictationAudio.speed || 'relaxed';
+            const voice = window.dictationAudio.voice || 'ana';
+
+            const speedLabelMap = {'slow': '0.7x', 'relaxed': '0.8x', 'normal': '0.9x', 'fast': '1.0x'};
+            const voiceLabelMap = {
+                'ana': 'Ana',
+                'jenny': 'Jenny',
+                'guy': 'Guy',
+                'aria': 'Aria',
+                'christopher': 'Chris'
+            };
+
+            if (engine === 'browser') {
+                navBadge.innerText = `Local • ${speedLabelMap[speed] || '0.8x'}`;
+            } else {
+                navBadge.innerText = `${voiceLabelMap[voice] || 'Ana'} • ${speedLabelMap[speed] || '0.8x'}`;
+            }
+        }
 
       if (window.dictationAudio) {
-        if (speedSelect) {
-          speedSelect.value = window.dictationAudio.speed || 'relaxed';
-          speedSelect.addEventListener('change', () => {
-            window.dictationAudio.setSpeed(speedSelect.value);
+          if (modalSpeed) {
+              modalSpeed.value = window.dictationAudio.speed || 'relaxed';
+              modalSpeed.addEventListener('change', () => {
+                  window.dictationAudio.setSpeed(modalSpeed.value);
+                  updateNavBadge();
+              });
+          }
+
+          if (modalVoice) {
+              modalVoice.value = window.dictationAudio.voice || 'ana';
+              modalVoice.addEventListener('change', () => {
+                  window.dictationAudio.setVoice(modalVoice.value);
+                  updateNavBadge();
+              });
+          }
+
+          if (modalEngine) {
+              modalEngine.value = window.dictationAudio.engine || 'neural';
+              const syncEngineUI = () => {
+                  if (voiceWrapper) {
+                      voiceWrapper.style.display = (modalEngine.value === 'neural') ? 'block' : 'none';
+                  }
+              };
+              syncEngineUI();
+
+              modalEngine.addEventListener('change', () => {
+                  window.dictationAudio.setEngine(modalEngine.value);
+                  syncEngineUI();
+                  updateNavBadge();
           });
         }
-        if (engineSelect) {
-          engineSelect.value = window.dictationAudio.engine || 'neural';
-          engineSelect.addEventListener('change', () => {
-            window.dictationAudio.setEngine(engineSelect.value);
+
+          if (btnTestAudio) {
+              btnTestAudio.addEventListener('click', () => {
+                  btnTestAudio.innerText = '🔊 Playing...';
+                  btnTestAudio.disabled = true;
+                  window.dictationAudio.speak(
+                      'Spelling',
+                      'Spelling practice helps us become confident readers and writers.',
+                      null,
+                      () => {
+                          btnTestAudio.innerText = '▶️ Play Sample';
+                          btnTestAudio.disabled = false;
+                      }
+                  );
           });
         }
+
+          updateNavBadge();
       }
     });
   </script>

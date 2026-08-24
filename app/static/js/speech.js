@@ -14,7 +14,7 @@ class DictationAudio {
     
     // User preferences from localStorage
       this.speed = localStorage.getItem('dictation_speed') || 'relaxed';
-      this.voice = localStorage.getItem('dictation_voice') || 'ana';
+      this.voice = localStorage.getItem('dictation_voice') || 'aria';
       this.engine = localStorage.getItem('dictation_engine') || 'neural';
 
     this.initFallbackVoice();

@@ -14,12 +14,13 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Default voice choices
-DEFAULT_VOICE = "en-US-AnaNeural"  # Friendly, natural youth voice for elementary learning
+DEFAULT_VOICE = "en-US-AriaNeural"  # Clear, natural expressive voice for dictation
 BACKUP_VOICES = {
-    "ana": "en-US-AnaNeural",       # Friendly & clear child voice
-    "jenny": "en-US-JennyNeural",   # Expressive female voice
-    "guy": "en-US-GuyNeural",       # Clear male voice
-    "aria": "en-US-AriaNeural"      # Confident female voice
+    "aria": "en-US-AriaNeural",  # Expressive, natural female voice (Default)
+    "ana": "en-US-AnaNeural",  # Friendly child voice
+    "jenny": "en-US-JennyNeural",  # Warm, clear female voice
+    "guy": "en-US-GuyNeural",  # Crisp, articulate male voice
+    "christopher": "en-US-ChristopherNeural"  # Warm, engaging male voice
 }
 
 # Speed mappings
