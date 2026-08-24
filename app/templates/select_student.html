@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Choose Your Profile - Spelling Dictation{% endblock %}
+
+{% block content %}
+<div style="max-width: 860px; margin: 2rem auto; text-align: center;">
+    <div style="margin-bottom: 2.5rem;">
+        <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">✨</div>
+        <h1 style="font-size: 2.5rem; color: var(--slate-900); margin-bottom: 0.5rem;">Who is practicing today?</h1>
+        <p style="color: var(--text-muted); font-size: 1.15rem;">Select your profile to start studying flashcards or try
+            a spelling challenge!</p>
+    </div>
+
+    {% if students %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+        {% for s in students %}
+        <a href="{{ url_for('student.dashboard', student_id=s.id) }}" class="card student-pick-card" style="
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      border-radius: var(--radius-xl);
+      border: 2px solid var(--slate-200);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+      background: #ffffff;
+    ">
+            <div style="
+        font-size: 4rem;
+        background: var(--primary-light);
+        width: 100px;
+        height: 100px;
+        border-radius: var(--radius-full);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 3px solid var(--primary-border);
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.2s ease;
+      " class="avatar-circle">
+                {{ s.avatar }}
+            </div>
+
+            <div>
+                <h2 style="font-size: 1.5rem; color: var(--slate-900); margin-bottom: 0.25rem;">{{ s.name }}</h2>
+                <span class="badge badge-primary" style="font-size: 0.85rem;">
+          📚 {{ s.lists.count() }} Word Lists
+        </span>
+            </div>
+
+            <div style="margin-top: 0.5rem; width: 100%;">
+        <span class="btn btn-primary" style="width: 100%;">
+          Start Learning ➜
+        </span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card" style="padding: 3rem 1.5rem;">
+        <h3>No Student Profiles Yet</h3>
+        <p style="color: var(--text-muted); margin: 1rem 0 1.5rem;">An administrator can easily create student profiles
+            in the admin portal.</p>
+        <a href="{{ url_for('admin.login') }}" class="btn btn-primary">Open Admin Portal</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

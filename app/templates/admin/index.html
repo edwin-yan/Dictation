@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Dictation Master{% endblock %}
+
+{% block content %}
+<div class="admin-header-bar">
+    <div>
+        <h1 style="font-size: 1.85rem;">🛡️ Administrator Management</h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Configure students, customize word lists, assign tests,
+            and inspect performance.</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('student.dashboard') }}" class="btn btn-secondary">
+            👁️ View Student Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Admin Sub Navigation -->
+<nav class="admin-nav">
+    <a href="{{ url_for('admin.index') }}" class="admin-nav-link active">📊 Overview</a>
+    <a href="{{ url_for('admin.students') }}" class="admin-nav-link">👥 Students ({{ students_count }})</a>
+    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link">📚 Word Lists ({{ lists_count }})</a>
+    <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link">📋 Assignments Matrix</a>
+    <a href="{{ url_for('admin.history') }}" class="admin-nav-link">🕒 Test History ({{ attempts_count }})</a>
+</nav>
+
+<!-- Admin Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #eef2ff; color: #4f46e5;">👥</div>
+        <div>
+            <div class="stat-value">{{ students_count }}</div>
+            <div class="stat-label">Enrolled Students</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">📚</div>
+        <div>
+            <div class="stat-value">{{ lists_count }}</div>
+            <div class="stat-label">Active Word Lists</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #f0fdf4; color: #16a34a;">🔤</div>
+        <div>
+            <div class="stat-value">{{ words_count }}</div>
+            <div class="stat-label">Total Vocabulary Words</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #fffbeb; color: #f59e0b;">📝</div>
+        <div>
+            <div class="stat-value">{{ attempts_count }}</div>
+            <div class="stat-label">Tests Taken</div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions & Recent Activity -->
+<div class="dashboard-grid">
+    <!-- Left: Recent School Test Attempts -->
+    <div>
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🕒 Recent Test Submissions</h3>
+                <a href="{{ url_for('admin.history') }}" class="btn btn-secondary btn-sm">View All ➜</a>
+            </div>
+
+            {% if recent_attempts %}
+            <div class="history-list">
+                {% for attempt in recent_attempts %}
+                <div class="history-item">
+                    <div class="history-info">
+            <span class="history-title">
+              {{ attempt.student.avatar }} {{ attempt.student.name }} — {{ attempt.title }}
+            </span>
+                        <span class="history-date">{{ attempt.created_at.strftime('%b %d, %Y - %I:%M %p') }}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        {% if attempt.percentage >= 90 %}
+                        <span class="score-pill score-perfect">{{ attempt.percentage }}% ({{ attempt.score }}/{{ attempt.total_words }})</span>
+                        {% elif attempt.percentage >= 70 %}
+                        <span class="score-pill score-good">{{ attempt.percentage }}% ({{ attempt.score }}/{{ attempt.total_words }})</span>
+                        {% else %}
+                        <span class="score-pill score-need-work">{{ attempt.percentage }}% ({{ attempt.score }}/{{ attempt.total_words }})</span>
+                        {% endif %}
+                        <a href="{{ url_for('student.results', attempt_id=attempt.id) }}"
+                           class="btn btn-secondary btn-sm">
+                            Inspect
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="text-align: center; color: var(--text-muted); padding: 2rem 0;">No tests submitted yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right: System & Seeding Tools -->
+    <div>
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <h3 class="card-title">⚡ Quick Management</h3>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <a href="{{ url_for('admin.students') }}" class="btn btn-primary" style="justify-content: flex-start;">
+                    ➕ Add & Manage Students
+                </a>
+                <a href="{{ url_for('admin.lists') }}" class="btn btn-secondary" style="justify-content: flex-start;">
+                    📝 Add & Edit Word Lists
+                </a>
+                <a href="{{ url_for('admin.assignments') }}" class="btn btn-secondary"
+                   style="justify-content: flex-start;">
+                    📋 Bulk Assign Lists Matrix
+                </a>
+            </div>
+        </div>
+
+        <!-- Reseed Tool -->
+        <div class="card" style="border-color: #fef08a; background: #fefce8;">
+            <h3 style="font-size: 1.1rem; color: #854d0e; margin-bottom: 0.5rem;">🔄 Reset & Re-Seed Data</h3>
+            <p style="font-size: 0.85rem; color: #713f12; margin-bottom: 1rem;">
+                Re-extracts words from <code>4th Grade Non-negotiation List.pdf</code> and populates default 4th Grade
+                lists, context sentences, and mock students.
+            </p>
+            <form method="POST" action="{{ url_for('admin.reseed') }}"
+                  onsubmit="return confirm('Are you sure you want to reset and re-seed the database? Current records will be replaced with clean PDF seed data.');">
+                <button type="submit" class="btn btn-danger btn-sm" style="background: #dc2626;">
+                    ⚠️ Reset & Reseed Database
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

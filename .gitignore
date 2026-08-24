@@ -1,0 +1,45 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Local database and audio cache (keeps data/ directory via .gitkeep)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/audio_cache/
+!data/.gitkeep
+
+# Operating System & IDEs
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+.antigravity/
+
+# Logs
+*.log

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}Spelling Dictation App{% endblock %}</title>
+
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap"
+          rel="stylesheet">
+
+    <!-- App Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+<!-- Navbar -->
+<header class="navbar">
+    <div class="navbar-container">
+        <a href="{{ url_for('student.dashboard') }}" class="brand">
+            <span class="brand-icon">✏️</span>
+            <span class="brand-text">SpellMaster</span>
+        </a>
+
+        <div class="nav-actions">
+            <!-- Audio Speed Control Selector -->
+            <div class="student-selector-form" title="Adjust voice reading speed for students">
+                <span style="font-size: 0.95rem;">🔊</span>
+                <select class="student-select" id="global-speed-select" style="font-size: 0.85rem;">
+                    <option value="slow">Speed: Slow (0.70x)</option>
+                    <option value="relaxed" selected>Speed: Kid-Friendly (0.80x)</option>
+                    <option value="normal">Speed: Standard (0.90x)</option>
+                    <option value="fast">Speed: Faster (1.05x)</option>
+                </select>
+            </div>
+
+            <!-- Student Switcher (shown on non-admin pages) -->
+            {% if students and request.endpoint and not request.endpoint.startswith('admin.') %}
+            <form class="student-selector-form" id="student-switch-form" action="{{ url_for('student.dashboard') }}"
+                  method="GET">
+                <span style="font-size: 1.1rem;">👤</span>
+                <select class="student-select" name="student_id" id="navbar-student-select">
+                    {% for s in students %}
+                    <option value="{{ s.id }}" {% if current_student and current_student.id== s.id %}selected{% endif
+                            %}>
+                        {{ s.avatar }} {{ s.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+
+            <!-- Admin Portal Icon / Button -->
+            {% if session.get('is_admin') %}
+            <a href="{{ url_for('admin.index') }}" class="admin-badge">
+                🛡️ Admin Mode
+            </a>
+            <a href="{{ url_for('admin.logout') }}" class="admin-lock-btn" title="Admin Logout">
+                🚪 Logout
+            </a>
+            {% else %}
+            <a href="{{ url_for('admin.login') }}" class="admin-lock-btn" title="Admin Portal Access">
+                🔒 Admin
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</header>
+
+<!-- Main Content Container -->
+<main class="main-content">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% if error_message %}
+    <div class="alert alert-danger">
+        <span>{{ error_message }}</span>
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Global Scripts -->
+<script src="{{ url_for('static', filename='js/speech.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+    // Sync speed dropdown with dictationAudio
+    document.addEventListener('DOMContentLoaded', () => {
+        const speedSelect = document.getElementById('global-speed-select');
+        if (speedSelect && window.dictationAudio) {
+            speedSelect.value = window.dictationAudio.speed || 'relaxed';
+            speedSelect.addEventListener('change', () => {
+                window.dictationAudio.setSpeed(speedSelect.value);
+            });
+        }
+    });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

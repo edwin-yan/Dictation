@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}{{ current_student.name if current_student else 'Dashboard' }} - SpellMaster{% endblock %}
+
+{% block content %}
+{% if current_student %}
+<!-- Student Hero Banner -->
+<div class="student-hero">
+    <div class="hero-left">
+        <div class="student-avatar-big">{{ current_student.avatar }}</div>
+        <div>
+            <h1 class="hero-title">Hey {{ current_student.name }}!</h1>
+            <p class="hero-subtitle">Ready to study words and level up your spelling power? 🚀</p>
+        </div>
+    </div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <a href="{{ url_for('student.select_student') }}" class="btn btn-secondary"
+           style="background: rgba(255,255,255,0.2); color: #fff; border-color: rgba(255,255,255,0.4);">
+            👥 Switch Profile
+        </a>
+        {% if missed_words|length > 0 %}
+        <a href="{{ url_for('student.take_tricky_challenge', student_id=current_student.id) }}"
+           class="btn btn-warning btn-lg" style="background: #f59e0b; color: #fff;">
+            🌟 Practice {{ missed_words|length }} Tricky Word{{ 's' if missed_words|length != 1 else '' }}
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Summary Statistics Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #eef2ff; color: #4f46e5;">🎮</div>
+        <div>
+            <div class="stat-value">{{ total_challenges }}</div>
+            <div class="stat-label">Spelling Quests Done</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">⭐</div>
+        <div>
+            <div class="stat-value">{{ avg_score }}%</div>
+            <div class="stat-label">Mastery Score</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #fffbeb; color: #f59e0b;">💡</div>
+        <div>
+            <div class="stat-value">{{ missed_words|length }}</div>
+            <div class="stat-label">Tricky Words to Master</div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Dashboard Grid -->
+<div class="dashboard-grid">
+    <!-- Left Column: Word Lists Grouped by Folder -->
+    <div>
+        <div class="card-header" style="margin-bottom: 1.5rem;">
+            <h2 class="card-title">📚 My Word Folders & Lists</h2>
+            <span class="badge badge-primary">{{ total_assigned_lists }} Lists Active</span>
+        </div>
+
+        {% if folder_groups %}
+        {% for folder in folder_groups %}
+        <div style="margin-bottom: 2rem;">
+            <!-- Folder Header -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--slate-200);">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.5rem;">{{ folder.icon }}</span>
+                    <h3 style="font-size: 1.3rem; color: var(--slate-900);">{{ folder.name }}</h3>
+                    {% if folder.description %}
+                    <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.25rem;">— {{ folder.description }}</span>
+                    {% endif %}
+                </div>
+                <span class="badge badge-gray">{{ folder.lists|length }} Lists</span>
+            </div>
+
+            <!-- Lists Grid inside this folder -->
+            <div class="lists-grid" style="margin-bottom: 1rem;">
+                {% for item in folder.lists %}
+                <div class="list-card">
+                    <div>
+                        <div class="list-card-header">
+                            <div>
+                                <h4 class="list-title" style="font-size: 1.2rem;">{{ item.title }}</h4>
+                                <p class="list-desc">{{ item.description }}</p>
+                            </div>
+                            <span class="badge badge-primary">{{ item.word_count }} Words</span>
+                        </div>
+
+                        <div class="list-meta" style="margin-top: 0.85rem;">
+                            <span class="badge badge-gray">{{ folder.icon }} {{ folder.name }}</span>
+                            {% if item.latest_attempt %}
+                            {% if item.latest_attempt.percentage >= 90 %}
+                            <span class="badge badge-success">🏆 High Score: {{ item.latest_attempt.percentage }}%</span>
+                            {% elif item.latest_attempt.percentage >= 70 %}
+                            <span class="badge badge-warning">📈 Score: {{ item.latest_attempt.percentage }}%</span>
+                            {% else %}
+                            <span class="badge badge-gray">🔄 Score: {{ item.latest_attempt.percentage }}%</span>
+                            {% endif %}
+                            {% else %}
+                            <span class="badge badge-gray">✨ Fresh List</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="list-actions">
+                        <a href="{{ url_for('student.study_list', list_id=item.id, student_id=current_student.id) }}"
+                           class="btn btn-secondary">
+                            🎴 Study Cards
+                        </a>
+                        <a href="{{ url_for('student.take_challenge', list_id=item.id, student_id=current_student.id) }}"
+                           class="btn btn-primary">
+                            🎧 Spelling Quest ➜
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="card" style="text-align: center; padding: 3rem 1.5rem;">
+            <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">No word lists are currently
+                associated with your profile.</p>
+            <p style="font-size: 0.9rem; color: var(--slate-500);">Ask an admin or teacher to connect a list!</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column: Tricky Words Queue & Recent Quests -->
+    <div>
+        <!-- Tricky Words Card -->
+        <div class="missed-words-card">
+            <div class="card-header" style="border-bottom-color: #fed7aa;">
+                <h3 style="font-size: 1.15rem; color: #9a3412; display: flex; align-items: center; gap: 0.4rem;">
+                    🌟 Tricky Words to Master
+                </h3>
+                <span class="badge badge-warning">{{ missed_words|length }} Words</span>
+            </div>
+
+            {% if missed_words %}
+            <p style="font-size: 0.85rem; color: #7c2d12;">Words that need a little extra study practice:</p>
+            <div class="word-chips-container">
+                {% for mw in missed_words %}
+                <div class="word-chip">
+                    <span>{{ mw.word }}</span>
+                    <span class="word-chip-badge">{{ mw.mistake_count }}x</span>
+                    <button class="word-audio-btn" data-word="{{ mw.word }}"
+                            data-context="{{ mw.context_sentence or '' }}" title="Listen"
+                            style="width: 24px; height: 24px; font-size: 0.7rem;">
+                        🔊
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+            <a href="{{ url_for('student.take_tricky_challenge', student_id=current_student.id) }}"
+               class="btn btn-warning" style="width: 100%; background: #ea580c; color: #ffffff;">
+                🚀 Practice Tricky Words
+            </a>
+            {% else %}
+            <div style="text-align: center; padding: 1.5rem 0;">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🏆</div>
+                <p style="font-weight: 700; color: #047857;">All Words Mastered!</p>
+                <p style="font-size: 0.85rem; color: #065f46; margin-top: 0.25rem;">You have 0 tricky words remaining.
+                    Super job!</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Practice Activity -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🕒 Recent Spelling Quests</h3>
+            </div>
+
+            {% if recent_attempts %}
+            <div class="history-list">
+                {% for attempt in recent_attempts %}
+                <div class="history-item">
+                    <div class="history-info">
+                        <span class="history-title">{{ attempt.title }}</span>
+                        <span class="history-date">{{ attempt.created_at.strftime('%b %d, %Y - %I:%M %p') }}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        {% if attempt.percentage >= 90 %}
+                        <span class="score-pill score-perfect">{{ attempt.percentage }}%</span>
+                        {% elif attempt.percentage >= 70 %}
+                        <span class="score-pill score-good">{{ attempt.percentage }}%</span>
+                        {% else %}
+                        <span class="score-pill score-need-work">{{ attempt.percentage }}%</span>
+                        {% endif %}
+                        <a href="{{ url_for('student.results', attempt_id=attempt.id) }}"
+                           class="btn btn-secondary btn-sm" title="Review breakdown">
+                            Review ➜
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 1.5rem 0;">No quests
+                completed yet. Pick a list above to study or practice!</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card" style="text-align: center; padding: 4rem 2rem;">
+    <h2>No Students Found</h2>
+    <p style="color: var(--text-muted); margin: 1rem 0 2rem;">Please log in as an administrator to create student
+        profiles.</p>
+    <a href="{{ url_for('admin.login') }}" class="btn btn-primary">Go to Admin Portal</a>
+</div>
+{% endif %}
+{% endblock %}

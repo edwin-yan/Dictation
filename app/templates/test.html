@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}{{ test_title }} - Spelling Quest{% endblock %}
+
+{% block content %}
+<div class="test-container">
+    <!-- Test Header with Progress -->
+    <div class="test-header">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <a href="{{ url_for('student.dashboard', student_id=student.id) }}"
+               style="font-size: 0.9rem; font-weight: 600; color: var(--slate-600);">
+                ← Back to Dashboard
+            </a>
+            <span class="badge badge-primary">{{ student.avatar }} {{ student.name }}</span>
+        </div>
+
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progress-fill" style="width: 0%;"></div>
+        </div>
+
+        <div class="progress-label">
+            <span id="progress-text">Word 1 of {{ words|length }}</span>
+            <span id="progress-percentage">0% Complete</span>
+        </div>
+    </div>
+
+    <!-- Active Challenge Stage Card -->
+    <div class="test-stage-card" id="test-stage">
+        <!-- Big Animated Audio Repeat Button -->
+        <div>
+            <button class="audio-speaker-button" id="audio-speaker-btn"
+                    title="Click to repeat audio dictation (Shortcut: Ctrl+Space)">
+                <span class="audio-icon">🔊</span>
+                <span class="audio-label">Repeat</span>
+            </button>
+            <p class="audio-hint" style="margin-top: 0.75rem;">
+                Click the speaker to hear the word again
+            </p>
+        </div>
+
+        <!-- Spelling Input Form -->
+        <form id="test-form" class="test-input-wrapper">
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <input
+                        type="text"
+                        id="spelling-input"
+                        class="test-input"
+                        placeholder="Type word here..."
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        autofocus
+                        required
+                >
+            </div>
+
+            <div class="test-controls">
+                <button type="submit" id="next-btn" class="btn btn-primary btn-lg"
+                        style="width: 100%; max-width: 320px;">
+                    Next Word ➜
+                </button>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">
+                Press <kbd
+                    style="background: var(--slate-100); padding: 0.1rem 0.4rem; border-radius: 4px; border: 1px solid var(--slate-300);">Enter
+                ↵</kbd> on your keyboard to submit each word.
+            </p>
+        </form>
+    </div>
+
+    <!-- Loading / Submitting Stage -->
+    <div class="test-stage-card" id="loading-stage" style="display: none;">
+        <div style="font-size: 3.5rem; animation: pulse-ring 1.5s infinite; border-radius: 50%;">⭐</div>
+        <h2>Awesome Effort!</h2>
+        <p style="color: var(--text-muted);">Grading and saving your spelling quest results...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.TEST_CONFIG = {
+        words: {
+    {
+        words | tojson
+    }
+    },
+    student_id: {
+        {
+            student.id
+        }
+    }
+    ,
+    list_id: {
+        {
+            word_list.id
+            if word_list else
+            'null'
+        }
+    }
+    ,
+    test_type: {
+        {
+            test_type | tojson
+        }
+    }
+    ,
+    title: {
+        {
+            test_title | tojson
+        }
+    }
+    }
+    ;
+</script>
+<script src="{{ url_for('static', filename='js/test_runner.js') }}"></script>
+{% endblock %}

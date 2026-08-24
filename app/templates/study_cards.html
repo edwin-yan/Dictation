@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Study: {{ word_list.title }} - Flashcards{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Flashcard 3D Perspective & Styles */
+    .flashcard-scene {
+        width: 100%;
+        max-width: 580px;
+        height: 340px;
+        margin: 1.5rem auto;
+        perspective: 1000px;
+    }
+
+    .flashcard {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        transform-style: preserve-3d;
+        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+    }
+
+    .flashcard.is-flipped {
+        transform: rotateY(180deg);
+    }
+
+    .flashcard-face {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        border-radius: var(--radius-xl);
+        border: 2px solid var(--slate-200);
+        box-shadow: var(--shadow-xl);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem;
+        text-align: center;
+        background: #ffffff;
+    }
+
+    .flashcard-front {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    .flashcard-back {
+        background: linear-gradient(135deg, #eef2ff 0%, #ffffff 100%);
+        transform: rotateY(180deg);
+        border-color: var(--primary-border);
+    }
+
+    .card-word-front {
+        font-family: var(--font-heading);
+        font-size: 3.25rem;
+        font-weight: 800;
+        color: var(--slate-900);
+        margin-bottom: 1rem;
+        letter-spacing: -0.01em;
+    }
+
+    .card-sentence-back {
+        font-size: 1.35rem;
+        color: var(--slate-800);
+        line-height: 1.5;
+        margin-bottom: 1.5rem;
+        font-style: italic;
+    }
+
+    .card-hint {
+        font-size: 0.85rem;
+        color: var(--slate-400);
+        margin-top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 760px; margin: 0 auto;">
+    <!-- Study Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;">
+        <a href="{{ url_for('student.dashboard', student_id=student.id) }}"
+           style="font-weight: 600; color: var(--slate-600);">
+            ← Back to Dashboard
+        </a>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="badge badge-primary">{{ student.avatar }} {{ student.name }}</span>
+            <button class="btn btn-secondary btn-sm" id="btn-shuffle" title="Shuffle study cards">
+                🔀 Shuffle
+            </button>
+        </div>
+    </div>
+
+    <div style="text-align: center;">
+        <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">🎴 Study Flashcards: {{ word_list.title }}</h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+            Card <strong id="card-index-text">1</strong> of <strong>{{ words|length }}</strong> • Click card to flip
+        </p>
+    </div>
+
+    <!-- Interactive 3D Flip Card -->
+    <div class="flashcard-scene" id="flashcard-scene">
+        <div class="flashcard" id="study-card">
+            <!-- Front Face (Word) -->
+            <div class="flashcard-face flashcard-front">
+                <span class="badge badge-gray"
+                      style="position: absolute; top: 1.25rem; left: 1.25rem;">Word Front</span>
+                <div class="card-word-front" id="front-word">...</div>
+                <button class="btn btn-primary btn-sm" id="front-audio-btn" style="border-radius: var(--radius-full);">
+                    🔊 Listen
+                </button>
+                <span class="card-hint">Click card or press [Space] to see sentence</span>
+            </div>
+
+            <!-- Back Face (Sentence & Cadence) -->
+            <div class="flashcard-face flashcard-back">
+                <span class="badge badge-primary" style="position: absolute; top: 1.25rem; left: 1.25rem;">Context Sentence</span>
+                <h3 id="back-word-title" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.75rem;">
+                    ...</h3>
+                <p class="card-sentence-back" id="back-sentence">...</p>
+                <button class="btn btn-success btn-sm" id="back-audio-btn" style="border-radius: var(--radius-full);">
+                    🔊 Listen with Context
+                </button>
+                <span class="card-hint">Click card or press [Space] to flip back</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Study Navigation Controls -->
+    <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+        <button class="btn btn-secondary btn-lg" id="btn-prev" style="min-width: 130px;">
+            ⬅️ Previous
+        </button>
+        <button class="btn btn-primary btn-lg" id="btn-flip" style="min-width: 140px;">
+            🔄 Flip Card
+        </button>
+        <button class="btn btn-secondary btn-lg" id="btn-next" style="min-width: 130px;">
+            Next ➡️
+        </button>
+    </div>
+
+    <!-- Ready CTA Banner -->
+    <div class="card"
+         style="text-align: center; background: linear-gradient(135deg, #eef2ff 0%, #ffffff 100%); border-color: var(--primary-border); padding: 1.75rem;">
+        <h3 style="font-size: 1.25rem; margin-bottom: 0.35rem;">Feel ready to test your spelling?</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+            Take the listen-and-spell quest whenever you want!
+        </p>
+        <a href="{{ url_for('student.take_challenge', list_id=word_list.id, student_id=student.id) }}"
+           class="btn btn-primary btn-lg">
+            🎧 Start Spelling Challenge ➜
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const studyWords = {
+    {
+        words | tojson
+    }
+    }
+    ;
+    let currentCardIndex = 0;
+
+    const cardElement = document.getElementById('study-card');
+    const frontWord = document.getElementById('front-word');
+    const backWordTitle = document.getElementById('back-word-title');
+    const backSentence = document.getElementById('back-sentence');
+    const cardIndexText = document.getElementById('card-index-text');
+
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const btnFlip = document.getElementById('btn-flip');
+    const btnShuffle = document.getElementById('btn-shuffle');
+    const frontAudioBtn = document.getElementById('front-audio-btn');
+    const backAudioBtn = document.getElementById('back-audio-btn');
+
+    function renderCard(index) {
+        if (!studyWords || studyWords.length === 0) return;
+
+        // Always start on front side
+        cardElement.classList.remove('is-flipped');
+
+        currentCardIndex = (index + studyWords.length) % studyWords.length;
+        const wordData = studyWords[currentCardIndex];
+
+        frontWord.innerText = wordData.word;
+        backWordTitle.innerText = wordData.word;
+        backSentence.innerText = wordData.context_sentence ? `"${wordData.context_sentence}"` : "(No context sentence needed)";
+        cardIndexText.innerText = currentCardIndex + 1;
+
+        btnPrev.disabled = (currentCardIndex === 0 && studyWords.length <= 1);
+    }
+
+    function flipCard() {
+        cardElement.classList.toggle('is-flipped');
+    }
+
+    function playAudioForCurrentWord(withContext = false) {
+        const wordData = studyWords[currentCardIndex];
+        if (!wordData || !window.dictationAudio) return;
+
+        if (withContext) {
+            window.dictationAudio.speak(wordData.word, wordData.context_sentence);
+        } else {
+            window.dictationAudio.speak(wordData.word);
+        }
+    }
+
+    // Event Listeners
+    cardElement.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        flipCard();
+    });
+
+    btnFlip.addEventListener('click', flipCard);
+
+    btnNext.addEventListener('click', () => {
+        renderCard(currentCardIndex + 1);
+    });
+
+    btnPrev.addEventListener('click', () => {
+        renderCard(currentCardIndex - 1);
+    });
+
+    btnShuffle.addEventListener('click', () => {
+        for (let i = studyWords.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [studyWords[i], studyWords[j]] = [studyWords[j], studyWords[i]];
+        }
+        renderCard(0);
+    });
+
+    frontAudioBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playAudioForCurrentWord(false);
+    });
+
+    backAudioBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playAudioForCurrentWord(true);
+    });
+
+    // Keyboard Navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            flipCard();
+        } else if (e.code === 'ArrowRight') {
+            renderCard(currentCardIndex + 1);
+        } else if (e.code === 'ArrowLeft') {
+            renderCard(currentCardIndex - 1);
+        }
+    });
+
+    // Initialize first card
+    renderCard(0);
+</script>
+{% endblock %}

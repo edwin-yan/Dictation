@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Students - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-header-bar">
+    <div>
+        <h1 style="font-size: 1.85rem;">👥 Student Management</h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Add students, choose their avatar, and associate
+            spelling lists.</p>
+    </div>
+    <button class="btn btn-primary" data-modal-open="create-student-modal">
+        ➕ Add New Student
+    </button>
+</div>
+
+<!-- Admin Sub Navigation -->
+<nav class="admin-nav">
+    <a href="{{ url_for('admin.index') }}" class="admin-nav-link">📊 Overview</a>
+    <a href="{{ url_for('admin.students') }}" class="admin-nav-link active">👥 Students ({{ students|length }})</a>
+    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link">📚 Word Lists</a>
+    <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link">📋 List Associations</a>
+    <a href="{{ url_for('admin.history') }}" class="admin-nav-link">🕒 Test History</a>
+</nav>
+
+<!-- Students Table -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="dictation-table">
+            <thead>
+            <tr>
+                <th>Student</th>
+                <th>Associated Lists</th>
+                <th>Quests Done</th>
+                <th>Tricky Words</th>
+                <th>Created</th>
+                <th style="text-align: right;">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for s in students %}
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span style="font-size: 1.5rem; background: var(--slate-100); width: 38px; height: 38px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center;">
+                {{ s.avatar }}
+              </span>
+                        <div>
+                            <a href="{{ url_for('student.dashboard', student_id=s.id) }}"
+                               style="font-weight: 700; color: var(--slate-900);">
+                                {{ s.name }}
+                            </a>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge badge-primary">{{ s.lists.count() }} Lists</span>
+                </td>
+                <td><strong>{{ s.attempts.count() }}</strong> completed</td>
+                <td>
+                    {% set missed_count = s.missed_words.filter_by(is_resolved=False).count() %}
+                    {% if missed_count > 0 %}
+                    <span class="badge badge-warning">{{ missed_count }} words</span>
+                    {% else %}
+                    <span class="badge badge-success">0 (Mastered)</span>
+                    {% endif %}
+                </td>
+                <td style="color: var(--text-muted); font-size: 0.85rem;">{{ s.created_at.strftime('%Y-%m-%d') if
+                    s.created_at else '—' }}
+                </td>
+                <td style="text-align: right;">
+                    <div style="display: inline-flex; gap: 0.4rem;">
+                        <a href="{{ url_for('student.dashboard', student_id=s.id) }}" class="btn btn-secondary btn-sm"
+                           title="View Student Dashboard">
+                            👁️ View
+                        </a>
+                        <button
+                                class="btn btn-secondary btn-sm btn-edit-student"
+                                data-id="{{ s.id }}"
+                                data-name="{{ s.name }}"
+                                data-avatar="{{ s.avatar }}"
+                                data-lists="{{ s.lists.all() | map(attribute='id') | list | tojson }}"
+                                title="Edit Student"
+                        >
+                            ✏️ Edit
+                        </button>
+                        <form method="POST" action="{{ url_for('admin.delete_student', student_id=s.id) }}"
+                              onsubmit="return confirm('Are you sure you want to delete student {{ s.name }} and their history?');"
+                              style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete Student">
+                                🗑️
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Create Student Modal -->
+<div class="modal-overlay" id="create-student-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 style="font-size: 1.25rem;">➕ Add New Student</h3>
+            <button class="modal-close" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('admin.create_student') }}">
+            <div class="form-group">
+                <label class="form-label" for="create-name">Student Name *</label>
+                <input type="text" id="create-name" name="name" class="form-control" placeholder="e.g. Jordan" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="create-avatar">Avatar Emoji</label>
+                <select id="create-avatar" name="avatar" class="form-control">
+                    <option value="🚀">🚀 Rocket</option>
+                    <option value="🌟">🌟 Star</option>
+                    <option value="🦁">🦁 Lion</option>
+                    <option value="🎨">🎨 Artist</option>
+                    <option value="🦊" selected>🦊 Fox</option>
+                    <option value="🐼">🐼 Panda</option>
+                    <option value="⚡">⚡ Lightning</option>
+                    <option value="🏆">🏆 Trophy</option>
+                    <option value="🦉">🦉 Owl</option>
+                    <option value="🐬">🐬 Dolphin</option>
+                    <option value="🦄">🦄 Unicorn</option>
+                    <option value="🐯">🐯 Tiger</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Associate Word Lists</label>
+                <div style="max-height: 160px; overflow-y: auto; background: var(--slate-50); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--slate-200);">
+                    {% for l in all_lists %}
+                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" name="list_ids" value="{{ l.id }}" checked>
+                        <span>{{ l.title }} ({{ l.words.count() }} words)</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Student</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Student Modal -->
+<div class="modal-overlay" id="edit-student-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 style="font-size: 1.25rem;">✏️ Edit Student Profile</h3>
+            <button class="modal-close" data-modal-close>&times;</button>
+        </div>
+        <form id="edit-student-form" method="POST" action="">
+            <div class="form-group">
+                <label class="form-label" for="edit-name">Student Name *</label>
+                <input type="text" id="edit-name" name="name" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="edit-avatar">Avatar Emoji</label>
+                <select id="edit-avatar" name="avatar" class="form-control">
+                    <option value="🚀">🚀 Rocket</option>
+                    <option value="🌟">🌟 Star</option>
+                    <option value="🦁">🦁 Lion</option>
+                    <option value="🎨">🎨 Artist</option>
+                    <option value="🦊">🦊 Fox</option>
+                    <option value="🐼">🐼 Panda</option>
+                    <option value="⚡">⚡ Lightning</option>
+                    <option value="🏆">🏆 Trophy</option>
+                    <option value="🦉">🦉 Owl</option>
+                    <option value="🐬">🐬 Dolphin</option>
+                    <option value="🦄">🦄 Unicorn</option>
+                    <option value="🐯">🐯 Tiger</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Associate Word Lists</label>
+                <div id="edit-student-lists-container"
+                     style="max-height: 160px; overflow-y: auto; background: var(--slate-50); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--slate-200);">
+                    {% for l in all_lists %}
+                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                        <input type="checkbox" name="list_ids" value="{{ l.id }}" class="edit-list-checkbox"
+                               id="edit-list-{{ l.id }}">
+                        <span>{{ l.title }} ({{ l.words.count() }} words)</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+<script>
+    // Populate edit student modal checkboxes
+    document.querySelectorAll('.btn-edit-student').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const studentId = btn.getAttribute('data-id');
+            const name = btn.getAttribute('data-name');
+            const avatar = btn.getAttribute('data-avatar');
+            const listIds = JSON.parse(btn.getAttribute('data-lists') || '[]');
+
+            const modal = document.getElementById('edit-student-modal');
+            const form = document.getElementById('edit-student-form');
+
+            if (modal && form) {
+                form.action = `/admin/students/${studentId}/edit`;
+                form.querySelector('[name="name"]').value = name;
+                form.querySelector('[name="avatar"]').value = avatar;
+
+                // Set checkboxes
+                form.querySelectorAll('.edit-list-checkbox').forEach(cb => {
+                    cb.checked = listIds.includes(parseInt(cb.value));
+                });
+
+                modal.classList.add('active');
+            }
+        });
+    });
+</script>
+{% endblock %}

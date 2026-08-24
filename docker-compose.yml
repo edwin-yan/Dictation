@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  dictation-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spelling_dictation_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=change-this-secret-key-in-production-2026
+      - ADMIN_PASSWORD=admin123
+      - DATABASE_URL=sqlite:////app/data/dictation.db
+    volumes:
+      # Local volume persistence for SQLite database across upgrades
+      - ./data:/app/data

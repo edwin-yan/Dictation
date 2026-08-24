@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Test Submission History - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-header-bar">
+    <div>
+        <h1 style="font-size: 1.85rem;">🕒 School Test History & Results Log</h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Review all student test sessions, scores, and detailed
+            spelling submissions.</p>
+    </div>
+</div>
+
+<!-- Admin Sub Navigation -->
+<nav class="admin-nav">
+    <a href="{{ url_for('admin.index') }}" class="admin-nav-link">📊 Overview</a>
+    <a href="{{ url_for('admin.students') }}" class="admin-nav-link">👥 Students</a>
+    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link">📚 Word Lists</a>
+    <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link">📋 Assignments Matrix</a>
+    <a href="{{ url_for('admin.history') }}" class="admin-nav-link active">🕒 Test History ({{ attempts|length }})</a>
+</nav>
+
+<!-- Filter Form -->
+<div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
+    <form method="GET" action="{{ url_for('admin.history') }}"
+          style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+        <div style="flex: 1; min-width: 180px;">
+            <label class="form-label" style="font-size: 0.825rem;">Filter by Student</label>
+            <select name="student_id" class="form-control">
+                <option value="">All Students</option>
+                {% for s in students %}
+                <option value="{{ s.id }}" {% if selected_student_id== s.id %}selected{% endif %}>
+                    {{ s.avatar }} {{ s.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="flex: 1; min-width: 200px;">
+            <label class="form-label" style="font-size: 0.825rem;">Filter by Word List</label>
+            <select name="list_id" class="form-control">
+                <option value="">All Word Lists</option>
+                {% for l in word_lists %}
+                <option value="{{ l.id }}" {% if selected_list_id== l.id %}selected{% endif %}>
+                    {{ l.title }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('admin.history') }}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<!-- History Log Table -->
+<div class="card">
+    {% if attempts %}
+    <div class="table-responsive">
+        <table class="dictation-table">
+            <thead>
+            <tr>
+                <th>Date & Time</th>
+                <th>Student</th>
+                <th>Test / Word List</th>
+                <th>Type</th>
+                <th>Score</th>
+                <th>Accuracy</th>
+                <th style="text-align: right;">Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for a in attempts %}
+            <tr>
+                <td style="color: var(--text-muted); font-size: 0.875rem;">
+                    {{ a.created_at.strftime('%Y-%m-%d %I:%M %p') if a.created_at else '—' }}
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.2rem;">{{ a.student.avatar }}</span>
+                        <span style="font-weight: 700;">{{ a.student.name }}</span>
+                    </div>
+                </td>
+                <td>
+                    <span style="font-weight: 600; color: var(--slate-800);">{{ a.title }}</span>
+                </td>
+                <td>
+                    {% if a.test_type == 'missed_words' %}
+                    <span class="badge badge-warning">Missed Words</span>
+                    {% else %}
+                    <span class="badge badge-primary">Standard</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ a.score }}</strong> / {{ a.total_words }}
+                </td>
+                <td>
+                    {% if a.percentage >= 90 %}
+                    <span class="score-pill score-perfect">{{ a.percentage }}%</span>
+                    {% elif a.percentage >= 70 %}
+                    <span class="score-pill score-good">{{ a.percentage }}%</span>
+                    {% else %}
+                    <span class="score-pill score-need-work">{{ a.percentage }}%</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <a href="{{ url_for('student.results', attempt_id=a.id) }}" class="btn btn-secondary btn-sm">
+                        Inspect Answers ➜
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="text-align: center; color: var(--text-muted); padding: 3rem 0;">No matching test submission records
+        found.</p>
+    {% endif %}
+</div>
+{% endblock %}
