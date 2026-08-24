@@ -705,47 +705,51 @@ a:hover {
     position: relative;
 }
 
-/* Big Audio Repeat Button */
+/* Big Audio Repeat Button for Kids & iPad */
 .audio-speaker-button {
-    width: 110px;
-    height: 110px;
+    width: 130px;
+    height: 130px;
     border-radius: var(--radius-full);
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
     color: #ffffff;
-    border: none;
-    box-shadow: 0 10px 20px -3px rgba(79, 70, 229, 0.4);
+    border: 3px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 12px 28px -4px rgba(79, 70, 229, 0.45), 0 4px 10px rgba(0, 0, 0, 0.05);
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.25rem;
+    gap: 0.4rem;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     outline: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 .audio-speaker-button:hover {
-    transform: scale(1.06);
-    box-shadow: 0 14px 28px -4px rgba(79, 70, 229, 0.5);
+    transform: scale(1.08);
+    box-shadow: 0 16px 32px -4px rgba(79, 70, 229, 0.55);
 }
 
 .audio-speaker-button:active {
-    transform: scale(0.96);
+    transform: scale(0.94);
 }
 
 .audio-speaker-button.speaking {
-    animation: pulse-ring 1.2s infinite;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    animation: pulse-ring 1.1s infinite;
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+    border-color: #a7f3d0;
 }
 
 .audio-icon {
-    font-size: 2.25rem;
+    font-size: 3.25rem;
+    line-height: 1;
 }
 
 .audio-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 

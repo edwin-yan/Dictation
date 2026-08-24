@@ -159,14 +159,19 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- JSON data element (immune to auto-formatters) -->
+<script id="study-words-data" type="application/json">
+    {{
+        words
+        |
+        tojson
+    }}
+</script>
+
 <script>
-    const studyWords = {
-    {
-        words | tojson
-    }
-    }
-    ;
+    const studyWords = JSON.parse(document.getElementById('study-words-data').textContent || '[]');
     let currentCardIndex = 0;
+    let audioTimer = null;
 
     const cardElement = document.getElementById('study-card');
     const frontWord = document.getElementById('front-word');
@@ -181,7 +186,7 @@
     const frontAudioBtn = document.getElementById('front-audio-btn');
     const backAudioBtn = document.getElementById('back-audio-btn');
 
-    function renderCard(index) {
+    function renderCard(index, autoPlay = true) {
         if (!studyWords || studyWords.length === 0) return;
 
         // Always start on front side
@@ -196,10 +201,24 @@
         cardIndexText.innerText = currentCardIndex + 1;
 
         btnPrev.disabled = (currentCardIndex === 0 && studyWords.length <= 1);
+
+        if (autoPlay) {
+            clearTimeout(audioTimer);
+            audioTimer = setTimeout(() => {
+                playAudioForCurrentWord(false);
+            }, 300);
+        }
     }
 
     function flipCard() {
+        const willBeFlipped = !cardElement.classList.contains('is-flipped');
         cardElement.classList.toggle('is-flipped');
+        if (willBeFlipped) {
+            clearTimeout(audioTimer);
+            audioTimer = setTimeout(() => {
+                playAudioForCurrentWord(true);
+            }, 300);
+        }
     }
 
     function playAudioForCurrentWord(withContext = false) {
@@ -222,11 +241,11 @@
     btnFlip.addEventListener('click', flipCard);
 
     btnNext.addEventListener('click', () => {
-        renderCard(currentCardIndex + 1);
+        renderCard(currentCardIndex + 1, true);
     });
 
     btnPrev.addEventListener('click', () => {
-        renderCard(currentCardIndex - 1);
+        renderCard(currentCardIndex - 1, true);
     });
 
     btnShuffle.addEventListener('click', () => {
@@ -234,7 +253,7 @@
             const j = Math.floor(Math.random() * (i + 1));
             [studyWords[i], studyWords[j]] = [studyWords[j], studyWords[i]];
         }
-        renderCard(0);
+        renderCard(0, true);
     });
 
     frontAudioBtn.addEventListener('click', (e) => {
@@ -253,13 +272,13 @@
             e.preventDefault();
             flipCard();
         } else if (e.code === 'ArrowRight') {
-            renderCard(currentCardIndex + 1);
+            renderCard(currentCardIndex + 1, true);
         } else if (e.code === 'ArrowLeft') {
-            renderCard(currentCardIndex - 1);
+            renderCard(currentCardIndex - 1, true);
         }
     });
 
-    // Initialize first card
-    renderCard(0);
+    // Initialize first card with auto-play
+    renderCard(0, true);
 </script>
 {% endblock %}

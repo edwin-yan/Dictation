@@ -3,7 +3,7 @@
 {% block title %}{{ test_title }} - Spelling Quest{% endblock %}
 
 {% block content %}
-<div class="test-container" id="test-view">
+<div class="test-container" id="test-stage">
     <!-- Progress Header -->
     <div class="test-header">
         <div>
@@ -27,16 +27,16 @@
         </div>
     </div>
 
-    <!-- Interactive Question Box -->
-    <div class="test-box">
+    <!-- Interactive Question Form -->
+    <form id="test-form" class="test-box" onsubmit="return false;">
         <!-- Big Audio Button & Hint -->
         <div style="margin-bottom: 2rem;">
-            <button class="btn-repeat-audio" id="btn-play-audio"
-                    title="Repeat Audio (Shortcut: Ctrl+Space or Cmd+Space)">
-                🔊
+            <button type="button" class="audio-speaker-button" id="audio-speaker-btn" title="Repeat Audio">
+                <span class="audio-icon">🔊</span>
+                <span class="audio-label">Tap to Repeat</span>
             </button>
-            <div class="audio-hint-text">
-                Click the speaker button or press <kbd>Ctrl</kbd>+<kbd>Space</kbd> to listen to the word
+            <div class="audio-hint" style="margin-top: 0.75rem;">
+                Word automatically speaks! Tap the speaker anytime if you need to hear it again.
             </div>
         </div>
 
@@ -61,18 +61,18 @@
 
         <!-- Actions & Keyboard Hint -->
         <div style="display: flex; justify-content: center; align-items: center; gap: 1rem;">
-            <button class="btn btn-primary btn-lg" id="btn-submit-word" style="min-width: 160px;">
+            <button type="submit" class="btn btn-primary btn-lg" id="next-btn" style="min-width: 160px;">
                 Next Word ➔
             </button>
         </div>
         <div class="audio-hint-text" style="margin-top: 1rem;">
             Press <kbd>Enter</kbd> to move to the next word
         </div>
-    </div>
+    </form>
 </div>
 
 <!-- Saving / Submitting Overlay (Hidden by default) -->
-<div id="submitting-overlay" style="display: none; text-align: center; padding: 4rem 2rem;">
+<div id="loading-stage" style="display: none; text-align: center; padding: 4rem 2rem;">
     <div class="card" style="max-width: 480px; margin: 0 auto; padding: 3rem;">
         <div style="font-size: 3.5rem; margin-bottom: 1rem;">🎉</div>
         <h2>Awesome Effort!</h2>
@@ -82,40 +82,34 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    window.TEST_CONFIG = {
-        words: {
+<!-- JSON data element (immune to auto-formatters) -->
+<script id="test-words-data" type="application/json">
+    {{
+        words
+        |
+        tojson
+    }}
+</script>
+<script id="test-config-data" type="application/json">
     {
-        words | tojson
+        "student_id": {{
+        student.id
+    }},
+    "list_id": {
+    {
+    word_list.id if word_list else 'null' }},
+    "test_type": {{test_type | tojson }},
+    "title": {{test_title | tojson}}
     }
-    },
-    student_id: {
-        {
-            student.id
-        }
-    }
-    ,
-    list_id: {
-        {
-            word_list.id
-            if word_list else
-            'null'
-        }
-    }
-    ,
-    test_type: {
-        {
-            test_type | tojson
-        }
-    }
-    ,
-    title: {
-        {
-            test_title | tojson
-        }
-    }
-    }
-    ;
+</script>
+
+<script>
+    const testWords = JSON.parse(document.getElementById('test-words-data').textContent || '[]');
+    const testConfig = JSON.parse(document.getElementById('test-config-data').textContent || '{}');
+    window.TEST_CONFIG = {
+        words: testWords,
+        ...testConfig
+    };
 </script>
 <script src="{{ url_for('static', filename='js/test_runner.js') }}"></script>
 {% endblock %}

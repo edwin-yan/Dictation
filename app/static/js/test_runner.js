@@ -14,16 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentIndex = 0;
     const recordedAnswers = [];
 
-    // DOM Elements
+    // DOM Elements with fallback selectors
     const progressFill = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
     const progressPercentage = document.getElementById('progress-percentage');
-    const audioBtn = document.getElementById('audio-speaker-btn');
+    const audioBtn = document.getElementById('audio-speaker-btn') || document.getElementById('btn-play-audio');
     const wordInput = document.getElementById('spelling-input');
-    const nextBtn = document.getElementById('next-btn');
+    const nextBtn = document.getElementById('next-btn') || document.getElementById('btn-submit-word');
     const testForm = document.getElementById('test-form');
-    const testStage = document.getElementById('test-stage');
-    const loadingStage = document.getElementById('loading-stage');
+    const testStage = document.getElementById('test-stage') || document.getElementById('test-view');
+    const loadingStage = document.getElementById('loading-stage') || document.getElementById('submitting-overlay');
 
     function updateProgress() {
         const currentNum = currentIndex + 1;
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function playCurrentWord() {
         const currentWord = words[currentIndex];
-        if (!currentWord) return;
+        if (!currentWord || !window.dictationAudio) return;
 
         if (audioBtn) audioBtn.classList.add('speaking');
 
@@ -69,11 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (nextBtn) {
-            nextBtn.innerText = (currentIndex === words.length - 1) ? 'Finish Test 🎉' : 'Next Word ➜';
+            nextBtn.innerText = (currentIndex === words.length - 1) ? 'Finish Quest 🎉' : 'Next Word ➔';
             nextBtn.disabled = false;
         }
 
-        // Play word with short delay for smooth DOM render
+        // Play word audio with small delay
         setTimeout(() => {
             playCurrentWord();
         }, 250);
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
             student_input: studentInput
         };
 
-        // Advance to next word without displaying feedback
+        // Advance to next word
         if (currentIndex + 1 < words.length) {
             loadWord(currentIndex + 1);
         } else {
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function finishTest() {
         // Show loading stage
         if (testStage) testStage.style.display = 'none';
-        if (loadingStage) loadingStage.style.display = 'flex';
+        if (loadingStage) loadingStage.style.display = 'block';
         if (progressFill) progressFill.style.width = '100%';
         if (progressPercentage) progressPercentage.innerText = '100% Complete';
 
@@ -128,14 +128,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success && data.redirect_url) {
                 window.location.href = data.redirect_url;
             } else {
-                alert(data.error || 'There was an error saving your test results.');
-                if (testStage) testStage.style.display = 'flex';
+                alert(data.error || 'There was an error saving your quest results.');
+                if (testStage) testStage.style.display = 'block';
                 if (loadingStage) loadingStage.style.display = 'none';
             }
         } catch (err) {
             console.error('Submission error:', err);
-            alert('Unable to submit test results. Please check your network connection.');
-            if (testStage) testStage.style.display = 'flex';
+            alert('Unable to submit quest results. Please check your network connection.');
+            if (testStage) testStage.style.display = 'block';
             if (loadingStage) loadingStage.style.display = 'none';
         }
     }
@@ -156,9 +156,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Keyboard shortcut: Ctrl + Space or Alt + R for repeat audio
+    if (nextBtn && !testForm) {
+        nextBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleWordSubmission();
+        });
+    }
+
+    if (wordInput) {
+        wordInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleWordSubmission();
+            }
+        });
+    }
+
+    // Keyboard shortcut: Ctrl + Space or Cmd + Space or Alt + R for repeat audio
     document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey && e.code === 'Space') || (e.altKey && e.code === 'KeyR')) {
+        if (((e.ctrlKey || e.metaKey) && e.code === 'Space') || (e.altKey && e.code === 'KeyR')) {
             e.preventDefault();
             playCurrentWord();
         }
