@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const words = config.words;
     let currentIndex = 0;
     const recordedAnswers = [];
+    let isSubmitting = false;
+    let lastSubmissionAttempt = 0;
 
     // DOM Elements with fallback selectors
     const progressFill = document.getElementById('progress-fill');
@@ -20,10 +22,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressPercentage = document.getElementById('progress-percentage');
     const audioBtn = document.getElementById('audio-speaker-btn') || document.getElementById('btn-play-audio');
     const wordInput = document.getElementById('spelling-input');
+    const inputWarningHint = document.getElementById('input-warning-hint');
     const nextBtn = document.getElementById('next-btn') || document.getElementById('btn-submit-word');
     const testForm = document.getElementById('test-form');
     const testStage = document.getElementById('test-stage') || document.getElementById('test-view');
     const loadingStage = document.getElementById('loading-stage') || document.getElementById('submitting-overlay');
+
+    function getMinRequiredLength() {
+        const currentWord = words[currentIndex];
+        if (!currentWord || !currentWord.word) return 2;
+        const cleanWord = currentWord.word.trim();
+        return Math.min(2, cleanWord.length);
+    }
+
+    function showInputWarning() {
+        const minLength = getMinRequiredLength();
+        if (wordInput) {
+            wordInput.classList.remove('input-shake');
+            void wordInput.offsetWidth; // Force DOM reflow to re-trigger animation
+            wordInput.classList.add('input-shake');
+            wordInput.focus();
+        }
+        if (inputWarningHint) {
+            inputWarningHint.innerText = minLength === 1
+                ? 'Please type at least 1 character before moving to the next word!'
+                : 'Please type at least 2 characters before moving to the next word!';
+            inputWarningHint.style.display = 'block';
+        }
+    }
 
     function updateProgress() {
         const currentNum = currentIndex + 1;
@@ -59,11 +85,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        isSubmitting = false;
         currentIndex = index;
         updateProgress();
 
+        if (inputWarningHint) {
+            inputWarningHint.style.display = 'none';
+        }
+
         if (wordInput) {
             wordInput.value = '';
+            wordInput.classList.remove('input-shake');
             wordInput.disabled = false;
             wordInput.focus();
         }
@@ -71,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (nextBtn) {
             nextBtn.innerText = (currentIndex === words.length - 1) ? 'Finish Quest 🎉' : 'Next Word ➔';
             nextBtn.disabled = false;
+            nextBtn.style.opacity = '0.75';
         }
 
         // Play word audio with small delay
@@ -80,10 +113,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleWordSubmission() {
+        const now = Date.now();
+        if (now - lastSubmissionAttempt < 150) return;
+        lastSubmissionAttempt = now;
+
+        if (isSubmitting) return;
         if (currentIndex >= words.length) return;
 
         const currentWord = words[currentIndex];
         const studentInput = wordInput ? wordInput.value.trim() : '';
+        const minLength = getMinRequiredLength();
+
+        if (studentInput.length < minLength) {
+            showInputWarning();
+            return;
+        }
+
+        isSubmitting = true;
+
+        if (inputWarningHint) inputWarningHint.style.display = 'none';
+        if (wordInput) wordInput.classList.remove('input-shake');
 
         // Record answer
         recordedAnswers[currentIndex] = {
@@ -156,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (nextBtn && !testForm) {
+    if (nextBtn) {
         nextBtn.addEventListener('click', (e) => {
             e.preventDefault();
             handleWordSubmission();
@@ -164,6 +213,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (wordInput) {
+        wordInput.addEventListener('input', () => {
+            const minLength = getMinRequiredLength();
+            const currentVal = wordInput.value.trim();
+            if (currentVal.length >= minLength) {
+                if (inputWarningHint) inputWarningHint.style.display = 'none';
+                wordInput.classList.remove('input-shake');
+                if (nextBtn) nextBtn.style.opacity = '1';
+            } else {
+                if (nextBtn) nextBtn.style.opacity = '0.75';
+            }
+        });
+
         wordInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();

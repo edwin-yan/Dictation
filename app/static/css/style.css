@@ -821,6 +821,27 @@ a:hover {
     box-shadow: 0 0 0 4px var(--primary-light);
 }
 
+@keyframes inputShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
+.input-shake {
+    animation: inputShake 0.4s ease-in-out;
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 4px #fee2e2 !important;
+}
+
+.input-warning-hint {
+    color: #ef4444;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    text-align: center;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
 .test-controls {
     display: flex;
     align-items: center;
