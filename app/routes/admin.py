@@ -483,6 +483,40 @@ def history():
     )
 
 
+@admin_bp.route('/history/<int:attempt_id>/delete', methods=['POST'])
+@admin_required
+def delete_attempt(attempt_id):
+    attempt = db.session.get(ChallengeAttempt, attempt_id)
+    if not attempt:
+        flash('Test submission record not found.', 'danger')
+        return redirect(url_for('admin.history'))
+
+    student_name = attempt.student.name if attempt.student else "Student"
+    test_title = attempt.title
+
+    # Revert missed words introduced by this attempt
+    for detail in attempt.details:
+        if not detail.is_correct:
+            existing_missed = MissedWord.query.filter_by(
+                student_id=attempt.student_id,
+                word=detail.word
+            ).first()
+            if existing_missed:
+                existing_missed.mistake_count -= 1
+                if existing_missed.mistake_count <= 0:
+                    db.session.delete(existing_missed)
+
+    db.session.delete(attempt)
+    db.session.commit()
+
+    flash(f"Test result for '{student_name}' ({test_title}) has been deleted.", 'success')
+
+    referrer = request.referrer
+    if referrer and '/results/' not in referrer:
+        return redirect(referrer)
+    return redirect(url_for('admin.history'))
+
+
 @admin_bp.route('/cache-audio', methods=['POST'])
 @admin_required
 def cache_audio():

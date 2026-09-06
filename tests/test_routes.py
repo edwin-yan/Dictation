@@ -98,3 +98,49 @@ class TestRoutes:
         }, follow_redirects=True)
         assert res_create_list.status_code == 200
         assert b"Fun Friday Words" in res_create_list.data
+
+    def test_admin_delete_test_attempt(self, client, sample_data, app):
+        from app.models import ChallengeAttempt, MissedWord, db
+        student_id = sample_data['student_id']
+        list_id = sample_data['list_id']
+
+        # 1. Submit a test attempt
+        payload = {
+            "student_id": student_id,
+            "list_id": list_id,
+            "test_type": "list",
+            "title": "Deletable Test Attempt",
+            "answers": [
+                {"word": "about", "context_sentence": "About stars.", "student_input": "wrongword"}
+            ]
+        }
+        res_submit = client.post('/api/test/submit', json=payload)
+        assert res_submit.status_code == 200
+        attempt_id = res_submit.get_json()['attempt_id']
+
+        # Verify attempt and missed word exist
+        with app.app_context():
+            assert db.session.get(ChallengeAttempt, attempt_id) is not None
+            missed = MissedWord.query.filter_by(student_id=student_id, word="about").first()
+            assert missed is not None
+            assert missed.mistake_count >= 1
+
+        # 2. Deletion without login should be blocked (redirects to login)
+        res_unauth = client.post(f'/admin/history/{attempt_id}/delete')
+        assert res_unauth.status_code == 302
+        assert '/admin/login' in res_unauth.location
+
+        # 3. Login as admin
+        client.post('/admin/login', data={'password': 'testadminpassword'})
+
+        # 4. Delete attempt
+        res_del = client.post(f'/admin/history/{attempt_id}/delete', follow_redirects=True)
+        assert res_del.status_code == 200
+        assert b"has been deleted" in res_del.data
+
+        # 5. Verify attempt is deleted in database
+        with app.app_context():
+            assert db.session.get(ChallengeAttempt, attempt_id) is None
+            # Missed word created by this attempt should be cleaned up
+            missed_after = MissedWord.query.filter_by(student_id=student_id, word="about").first()
+            assert missed_after is None
