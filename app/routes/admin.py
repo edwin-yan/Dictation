@@ -190,7 +190,7 @@ def create_folder():
     db.session.add(folder)
     db.session.commit()
     flash(f"Bundle '{name}' created and connected to students.", 'success')
-    return redirect(url_for('admin.lists'))
+    return redirect(url_for('admin.lists', folder_id=folder.id))
 
 
 @admin_bp.route('/folders/<int:folder_id>/edit', methods=['POST'])
@@ -207,14 +207,14 @@ def edit_folder(folder_id):
 
     if not name:
         flash('Bundle name cannot be empty.', 'danger')
-        return redirect(url_for('admin.lists'))
+        return redirect(url_for('admin.lists', folder_id=folder_id))
 
     folder.name = name
     folder.description = description
     folder.icon = icon
     db.session.commit()
     flash(f"Bundle '{name}' updated.", 'success')
-    return redirect(url_for('admin.lists'))
+    return redirect(url_for('admin.lists', folder_id=folder.id))
 
 
 @admin_bp.route('/folders/<int:folder_id>/delete', methods=['POST'])
@@ -235,9 +235,65 @@ def delete_folder(folder_id):
 @admin_required
 def lists():
     folders_list = WordListFolder.query.order_by(WordListFolder.position, WordListFolder.name).all()
-    word_lists = WordList.query.order_by(WordList.id).all()
+    unfiled_count = WordList.query.filter_by(folder_id=None).count()
+    total_lists_count = WordList.query.count()
     students_list = Student.query.order_by(Student.name).all()
-    return render_template('admin/lists.html', word_lists=word_lists, folders=folders_list, students=students_list)
+
+    folder_param = request.args.get('folder_id')
+
+    active_folder = None
+    active_folder_id = None
+
+    if folder_param == 'all':
+        active_folder_id = 'all'
+        word_lists = WordList.query.order_by(WordList.id).all()
+    elif folder_param == 'unfiled':
+        active_folder_id = 'unfiled'
+        word_lists = WordList.query.filter_by(folder_id=None).order_by(WordList.id).all()
+    elif folder_param:
+        try:
+            f_id = int(folder_param)
+            active_folder = db.session.get(WordListFolder, f_id)
+            if active_folder:
+                active_folder_id = active_folder.id
+                word_lists = WordList.query.filter_by(folder_id=active_folder.id).order_by(WordList.id).all()
+            else:
+                if folders_list:
+                    active_folder = folders_list[0]
+                    active_folder_id = active_folder.id
+                    word_lists = WordList.query.filter_by(folder_id=active_folder.id).order_by(WordList.id).all()
+                elif unfiled_count > 0:
+                    active_folder_id = 'unfiled'
+                    word_lists = WordList.query.filter_by(folder_id=None).order_by(WordList.id).all()
+                else:
+                    active_folder_id = 'all'
+                    word_lists = WordList.query.order_by(WordList.id).all()
+        except (ValueError, TypeError):
+            active_folder_id = 'all'
+            word_lists = WordList.query.order_by(WordList.id).all()
+    else:
+        # Default: pick first folder if available, else unfiled or all
+        if folders_list:
+            active_folder = folders_list[0]
+            active_folder_id = active_folder.id
+            word_lists = WordList.query.filter_by(folder_id=active_folder.id).order_by(WordList.id).all()
+        elif unfiled_count > 0:
+            active_folder_id = 'unfiled'
+            word_lists = WordList.query.filter_by(folder_id=None).order_by(WordList.id).all()
+        else:
+            active_folder_id = 'all'
+            word_lists = WordList.query.order_by(WordList.id).all()
+
+    return render_template(
+        'admin/lists.html',
+        word_lists=word_lists,
+        folders=folders_list,
+        active_folder=active_folder,
+        active_folder_id=active_folder_id,
+        unfiled_count=unfiled_count,
+        total_lists_count=total_lists_count,
+        students=students_list
+    )
 
 
 @admin_bp.route('/lists/create', methods=['POST'])
@@ -250,7 +306,7 @@ def create_list():
 
     if not title:
         flash('List title is required.', 'danger')
-        return redirect(url_for('admin.lists'))
+        return redirect(url_for('admin.lists', folder_id=folder_id if folder_id else None))
 
     wlist = WordList(
         folder_id=folder_id if folder_id else None,
@@ -261,7 +317,9 @@ def create_list():
     db.session.add(wlist)
     db.session.commit()
     flash(f"Word list '{title}' created.", 'success')
-    return redirect(url_for('admin.lists'))
+    if wlist.folder_id:
+        return redirect(url_for('admin.lists', folder_id=wlist.folder_id))
+    return redirect(url_for('admin.lists', folder_id='unfiled'))
 
 
 @admin_bp.route('/lists/<int:list_id>/edit', methods=['POST'])
@@ -275,7 +333,7 @@ def edit_list(list_id):
     title = request.form.get('title', '').strip()
     if not title:
         flash('List title cannot be empty.', 'danger')
-        return redirect(url_for('admin.lists'))
+        return redirect(url_for('admin.lists', folder_id=wlist.folder_id if wlist.folder_id else 'unfiled'))
 
     wlist.title = title
     wlist.description = request.form.get('description', '').strip()
@@ -284,7 +342,9 @@ def edit_list(list_id):
 
     db.session.commit()
     flash(f"Word list '{wlist.title}' updated successfully.", 'success')
-    return redirect(url_for('admin.lists'))
+    if wlist.folder_id:
+        return redirect(url_for('admin.lists', folder_id=wlist.folder_id))
+    return redirect(url_for('admin.lists', folder_id='unfiled'))
 
 
 @admin_bp.route('/lists/<int:list_id>/delete', methods=['POST'])
@@ -293,9 +353,13 @@ def delete_list(list_id):
     wlist = db.session.get(WordList, list_id)
     if wlist:
         title = wlist.title
+        target_folder_id = wlist.folder_id
         db.session.delete(wlist)
         db.session.commit()
         flash(f"Word list '{title}' deleted.", 'info')
+        if target_folder_id:
+            return redirect(url_for('admin.lists', folder_id=target_folder_id))
+        return redirect(url_for('admin.lists', folder_id='unfiled'))
     return redirect(url_for('admin.lists'))
 
 
@@ -312,7 +376,7 @@ def add_word(list_id):
 
     if not word_text:
         flash('Word text is required.', 'danger')
-        return redirect(url_for('admin.lists'))
+        return redirect(url_for('admin.lists', folder_id=wlist.folder_id if wlist.folder_id else 'unfiled'))
 
     count = wlist.words.count()
     word_obj = Word(
@@ -324,7 +388,9 @@ def add_word(list_id):
     db.session.add(word_obj)
     db.session.commit()
     flash(f"Word '{word_text}' added to '{wlist.title}'.", 'success')
-    return redirect(url_for('admin.lists'))
+    if wlist.folder_id:
+        return redirect(url_for('admin.lists', folder_id=wlist.folder_id))
+    return redirect(url_for('admin.lists', folder_id='unfiled'))
 
 
 @admin_bp.route('/words/<int:word_id>/edit', methods=['POST'])
@@ -340,13 +406,17 @@ def edit_word(word_id):
 
     if not word_text:
         flash('Word text cannot be empty.', 'danger')
-        return redirect(url_for('admin.lists'))
+        target_fid = word_obj.word_list.folder_id if word_obj.word_list else None
+        return redirect(url_for('admin.lists', folder_id=target_fid if target_fid else 'unfiled'))
 
     word_obj.word = word_text
     word_obj.context_sentence = context if context else None
+    target_fid = word_obj.word_list.folder_id if word_obj.word_list else None
     db.session.commit()
     flash(f"Word '{word_text}' updated.", 'success')
-    return redirect(url_for('admin.lists'))
+    if target_fid:
+        return redirect(url_for('admin.lists', folder_id=target_fid))
+    return redirect(url_for('admin.lists', folder_id='unfiled'))
 
 
 @admin_bp.route('/words/<int:word_id>/delete', methods=['POST'])
@@ -356,9 +426,13 @@ def delete_word(word_id):
     if word_obj:
         list_title = word_obj.word_list.title
         word_name = word_obj.word
+        target_fid = word_obj.word_list.folder_id if word_obj.word_list else None
         db.session.delete(word_obj)
         db.session.commit()
         flash(f"Word '{word_name}' removed from '{list_title}'.", 'info')
+        if target_fid:
+            return redirect(url_for('admin.lists', folder_id=target_fid))
+        return redirect(url_for('admin.lists', folder_id='unfiled'))
     return redirect(url_for('admin.lists'))
 
 

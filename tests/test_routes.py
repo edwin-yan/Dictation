@@ -144,3 +144,50 @@ class TestRoutes:
             # Missed word created by this attempt should be cleaned up
             missed_after = MissedWord.query.filter_by(student_id=student_id, word="about").first()
             assert missed_after is None
+
+    def test_admin_folder_tab_filtering(self, client, app):
+        from app.models import WordListFolder, WordList, db
+
+        client.post('/admin/login', data={'password': 'testadminpassword'})
+
+        with app.app_context():
+            folder_2nd = WordListFolder(name="2nd Grade", icon="📙", position=0)
+            folder_4th = WordListFolder(name="4th Grade Non-Negotiable", icon="📘", position=1)
+            db.session.add_all([folder_2nd, folder_4th])
+            db.session.commit()
+
+            list_2 = WordList(title="2nd Grade Vocabulary", folder_id=folder_2nd.id)
+            list_4 = WordList(title="4th Grade Weekly List", folder_id=folder_4th.id)
+            list_u = WordList(title="Standalone Spelling List", folder_id=None)
+            db.session.add_all([list_2, list_4, list_u])
+            db.session.commit()
+
+            f2_id = folder_2nd.id
+            f4_id = folder_4th.id
+
+        # 1. Default request should activate first folder (2nd Grade)
+        res_default = client.get('/admin/lists')
+        assert res_default.status_code == 200
+        assert b"2nd Grade Vocabulary" in res_default.data
+        assert b"4th Grade Weekly List" not in res_default.data
+
+        # 2. Filter by 4th Grade folder tab
+        res_4th = client.get(f'/admin/lists?folder_id={f4_id}')
+        assert res_4th.status_code == 200
+        assert b"4th Grade Weekly List" in res_4th.data
+        assert b"2nd Grade Vocabulary" not in res_4th.data
+
+        # 3. Filter by unfiled lists tab
+        res_unfiled = client.get('/admin/lists?folder_id=unfiled')
+        assert res_unfiled.status_code == 200
+        assert b"Standalone Spelling List" in res_unfiled.data
+        assert b"2nd Grade Vocabulary" not in res_unfiled.data
+        assert b"4th Grade Weekly List" not in res_unfiled.data
+
+        # 4. View all lists tab
+        res_all = client.get('/admin/lists?folder_id=all')
+        assert res_all.status_code == 200
+        assert b"2nd Grade Vocabulary" in res_all.data
+        assert b"4th Grade Weekly List" in res_all.data
+        assert b"Standalone Spelling List" in res_all.data
+

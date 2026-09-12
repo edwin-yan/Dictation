@@ -86,6 +86,10 @@ class WordListFolder(db.Model):
     lists = db.relationship('WordList', backref='folder', lazy='dynamic', cascade='all, delete-orphan',
                             order_by='WordList.id')
 
+    @property
+    def total_words(self):
+        return sum(l.words.count() for l in self.lists.all())
+
     def to_dict(self, include_lists=False):
         data = {
             'id': self.id,

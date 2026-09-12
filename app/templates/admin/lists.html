@@ -28,42 +28,127 @@
 <nav class="admin-nav">
     <a href="{{ url_for('admin.index') }}" class="admin-nav-link">📊 Overview</a>
     <a href="{{ url_for('admin.students') }}" class="admin-nav-link">👥 Students</a>
-    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link active">📚 Word Lists & Bundles ({{ word_lists|length
-        }})</a>
+    <a href="{{ url_for('admin.lists') }}" class="admin-nav-link active">📚 Word Lists & Bundles ({{ total_lists_count }})</a>
     <a href="{{ url_for('admin.import_page') }}" class="admin-nav-link">📥 CSV Import</a>
     <a href="{{ url_for('admin.assignments') }}" class="admin-nav-link">📋 Bundle Associations</a>
     <a href="{{ url_for('admin.history') }}" class="admin-nav-link">🕒 Test History</a>
 </nav>
 
-<!-- Folders / Bundles Summary Bar -->
-{% if folders %}
-<div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem;">
-    {% for f in folders %}
-    <div style="background: #ffffff; border: 1px solid var(--slate-200); border-radius: var(--radius-md); padding: 0.6rem 1rem; display: flex; align-items: center; gap: 0.6rem; box-shadow: var(--shadow-sm);">
-        <span style="font-size: 1.25rem;">{{ f.icon }}</span>
-        <div>
-            <span style="font-weight: 700; font-size: 0.925rem;">{{ f.name }}</span>
-            <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 0.35rem;">({{ f.lists.count() }} lists)</span>
-        </div>
-        <div style="display: flex; gap: 0.25rem; margin-left: 0.5rem;">
-            <button class="btn btn-secondary btn-sm btn-edit-folder" data-id="{{ f.id }}" data-name="{{ f.name }}"
-                    data-desc="{{ f.description or '' }}" data-icon="{{ f.icon }}" title="Edit Bundle"
-                    style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">
-                ✏️
-            </button>
-            <form method="POST" action="{{ url_for('admin.delete_folder', folder_id=f.id) }}"
-                  onsubmit="return confirm('Remove bundle \'{{ f.name }}\'? Lists inside will become unfiled.');"
-                  style="display: inline;">
-                <button type="submit" class="btn btn-danger btn-sm" title="Delete Bundle"
-                        style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">
-                    🗑️
+<!-- Folder / Bundle Tabs Bar -->
+<div class="folder-tabs-container">
+    <div class="folder-tabs-header">
+        <span class="folder-tabs-title">📁 Filter by Bundle / Folder:</span>
+        <button class="btn btn-secondary btn-xs" data-modal-open="create-folder-modal" title="Add a new Bundle">
+            ➕ New Bundle
+        </button>
+    </div>
+    <div class="folder-tabs-bar">
+        {% for f in folders %}
+        <div class="folder-tab-item {% if active_folder_id == f.id %}active{% endif %}">
+            <a href="{{ url_for('admin.lists', folder_id=f.id) }}" class="folder-tab-link">
+                <span class="folder-tab-icon">{{ f.icon }}</span>
+                <span class="folder-tab-name">{{ f.name }}</span>
+                <span class="folder-tab-count">{{ f.lists.count() }}</span>
+            </a>
+            <div class="folder-tab-actions">
+                <button type="button" class="btn-folder-action btn-edit-folder" data-id="{{ f.id }}" data-name="{{ f.name }}"
+                        data-desc="{{ f.description or '' }}" data-icon="{{ f.icon }}" title="Edit Bundle">
+                    ✏️
                 </button>
-            </form>
+                <form method="POST" action="{{ url_for('admin.delete_folder', folder_id=f.id) }}"
+                      onsubmit="return confirm('Remove bundle \'{{ f.name }}\'? Lists inside will become unfiled.');"
+                      style="display: inline; margin: 0;">
+                    <button type="submit" class="btn-folder-action btn-folder-delete" title="Delete Bundle">
+                        🗑️
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if unfiled_count > 0 %}
+        <div class="folder-tab-item {% if active_folder_id == 'unfiled' %}active{% endif %}">
+            <a href="{{ url_for('admin.lists', folder_id='unfiled') }}" class="folder-tab-link">
+                <span class="folder-tab-icon">📁</span>
+                <span class="folder-tab-name">Unfiled Lists</span>
+                <span class="folder-tab-count">{{ unfiled_count }}</span>
+            </a>
+        </div>
+        {% endif %}
+
+        <div class="folder-tab-item {% if active_folder_id == 'all' %}active{% endif %}">
+            <a href="{{ url_for('admin.lists', folder_id='all') }}" class="folder-tab-link">
+                <span class="folder-tab-icon">🌐</span>
+                <span class="folder-tab-name">All Bundles</span>
+                <span class="folder-tab-count">{{ total_lists_count }}</span>
+            </a>
         </div>
     </div>
-    {% endfor %}
 </div>
-{% endif %}
+
+<!-- Active Bundle / Folder Banner -->
+<div class="active-folder-banner">
+    <div class="active-folder-info">
+        <div class="active-folder-icon-box">
+            {% if active_folder %}
+                {{ active_folder.icon }}
+            {% elif active_folder_id == 'unfiled' %}
+                📁
+            {% else %}
+                🌐
+            {% endif %}
+        </div>
+        <div>
+            <div class="active-folder-title-row">
+                <h2 class="active-folder-title">
+                    {% if active_folder %}
+                        {{ active_folder.name }}
+                    {% elif active_folder_id == 'unfiled' %}
+                        Unfiled Word Lists
+                    {% else %}
+                        All Word Lists
+                    {% endif %}
+                </h2>
+                <span class="badge badge-primary">{{ word_lists|length }} {% if word_lists|length == 1 %}List{% else %}Lists{% endif %}</span>
+                {% if active_folder %}
+                <span class="badge badge-gray">{{ active_folder.total_words }} Words</span>
+                {% endif %}
+            </div>
+            <p class="active-folder-desc">
+                {% if active_folder and active_folder.description %}
+                    {{ active_folder.description }}
+                {% elif active_folder %}
+                    All word lists assigned to {{ active_folder.name }}.
+                {% elif active_folder_id == 'unfiled' %}
+                    Word lists that have not been assigned to any specific grade or subject bundle yet.
+                {% else %}
+                    Showing all lists across every bundle and unfiled category.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <div class="active-folder-actions">
+        {% if active_folder %}
+        <button type="button" class="btn btn-primary btn-sm btn-create-list-in-folder" data-folder-id="{{ active_folder.id }}">
+            ➕ Add List to this Bundle
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm btn-edit-folder"
+                data-id="{{ active_folder.id }}" data-name="{{ active_folder.name }}"
+                data-desc="{{ active_folder.description or '' }}" data-icon="{{ active_folder.icon }}">
+            ✏️ Edit Bundle
+        </button>
+        {% elif active_folder_id == 'unfiled' %}
+        <button type="button" class="btn btn-primary btn-sm btn-create-list-in-folder" data-folder-id="">
+            ➕ Add Unfiled List
+        </button>
+        {% else %}
+        <button type="button" class="btn btn-primary btn-sm" data-modal-open="create-list-modal">
+            ➕ Create Word List
+        </button>
+        {% endif %}
+    </div>
+</div>
 
 <!-- Word Lists Section -->
 {% for wlist in word_lists %}
@@ -197,10 +282,34 @@
     </div>
 </div>
 {% else %}
-<div class="card" style="text-align: center; padding: 3rem 1.5rem;">
-    <h3>No Word Lists Available</h3>
-    <p style="color: var(--text-muted); margin: 1rem 0;">Create a new word list or import from CSV to begin.</p>
-    <button class="btn btn-primary" data-modal-open="create-list-modal">Create Word List</button>
+<div class="card" style="text-align: center; padding: 3.5rem 1.5rem; border: 2px dashed var(--slate-300); background: var(--slate-50); border-radius: var(--radius-lg);">
+    <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">
+        {% if active_folder %}{{ active_folder.icon }}{% else %}📝{% endif %}
+    </div>
+    <h3 style="font-size: 1.25rem; color: var(--slate-800); margin-bottom: 0.5rem;">
+        {% if active_folder %}
+        No Word Lists in "{{ active_folder.name }}" Yet
+        {% elif active_folder_id == 'unfiled' %}
+        No Unfiled Word Lists
+        {% else %}
+        No Word Lists Available
+        {% endif %}
+    </h3>
+    <p style="color: var(--text-muted); margin: 0 auto 1.5rem; max-width: 440px; font-size: 0.95rem;">
+        {% if active_folder %}
+        Get started by creating the first spelling list for this bundle, or import multiple lists via CSV.
+        {% else %}
+        Create a new word list or import from CSV to begin.
+        {% endif %}
+    </p>
+    <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+        <button class="btn btn-primary btn-create-list-in-folder" data-folder-id="{{ active_folder.id if active_folder else '' }}">
+            ➕ Create List in this Bundle
+        </button>
+        <a href="{{ url_for('admin.import_page') }}" class="btn btn-secondary">
+            📥 Import from CSV
+        </a>
+    </div>
 </div>
 {% endfor %}
 
@@ -297,7 +406,7 @@
                 <select id="create-folder-select" name="folder_id" class="form-control">
                     <option value="">-- No Bundle (Unfiled) --</option>
                     {% for f in folders %}
-                    <option value="{{ f.id }}">{{ f.icon }} {{ f.name }}</option>
+                    <option value="{{ f.id }}" {% if active_folder and active_folder.id == f.id %}selected{% endif %}>{{ f.icon }} {{ f.name }}</option>
                     {% endfor %}
                 </select>
             </div>

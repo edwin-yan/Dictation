@@ -133,4 +133,19 @@ document.addEventListener('DOMContentLoaded', () => {
             checkboxes.forEach(c => c.checked = !allChecked);
         });
     });
+
+    // 6. Create List in Target Folder Helper
+    document.querySelectorAll('.btn-create-list-in-folder').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const folderId = btn.getAttribute('data-folder-id');
+            const modal = document.getElementById('create-list-modal');
+            const select = document.getElementById('create-folder-select');
+            if (select && folderId !== null && folderId !== undefined) {
+                select.value = folderId;
+            }
+            if (modal) {
+                modal.classList.add('active');
+            }
+        });
+    });
 });
