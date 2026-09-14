@@ -11,6 +11,24 @@
         height: 340px;
         margin: 1.5rem auto;
         perspective: 1000px;
+        touch-action: pan-y;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: grab;
+        position: relative;
+    }
+
+    .flashcard-scene:active {
+        cursor: grabbing;
+    }
+
+    .flashcard-wrapper {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        transform-style: preserve-3d;
+        will-change: transform, opacity;
+        transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease;
     }
 
     .flashcard {
@@ -103,7 +121,7 @@
 {% endblock %}
 
 {% block content %}
-<div style="max-width: 760px; margin: 0 auto;">
+<div style="max-width: 760px; margin: 0 auto; overflow-x: clip;">
     <!-- Study Header -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;">
         <a href="{{ url_for('student.dashboard', student_id=student.id) }}"
@@ -121,36 +139,37 @@
     <div style="text-align: center; margin-bottom: 1rem;">
         <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">🎴 Study Flashcards: {{ word_list.title }}</h1>
         <p style="color: var(--text-muted); font-size: 0.9rem;">
-            Card <strong id="card-index-text">1</strong> of <strong>{{ words|length }}</strong> • Tap card or press
-            [Space] to flip
+            Card <strong id="card-index-text">1</strong> of <strong>{{ words|length }}</strong> • 👆 Tap to flip • ↔️ Swipe left/right on iPad
         </p>
     </div>
 
-    <!-- 3D Flashcard Scene -->
+    <!-- 3D Flashcard Scene with Swipe Wrapper -->
     <div class="flashcard-scene" id="flashcard-scene">
-        <div class="flashcard" id="study-card" title="Click or tap to flip">
-            <!-- Front of Card: Word -->
-            <div class="flashcard-face flashcard-front">
-                <span class="badge badge-gray"
-                      style="position: absolute; top: 1.25rem; left: 1.25rem;">Word Front</span>
-                <h2 class="card-word-front" id="front-word">...</h2>
-                <button class="btn btn-secondary btn-sm" id="front-audio-btn"
-                        style="border-radius: var(--radius-full);">
-                    🔊 Listen to Word
-                </button>
-                <span class="card-hint">Tap card or press [Space] to flip</span>
-            </div>
+        <div class="flashcard-wrapper" id="flashcard-wrapper">
+            <div class="flashcard" id="study-card" title="Click or tap to flip • Swipe left/right for next/prev">
+                <!-- Front of Card: Word -->
+                <div class="flashcard-face flashcard-front">
+                    <span class="badge badge-gray"
+                          style="position: absolute; top: 1.25rem; left: 1.25rem;">Word Front</span>
+                    <h2 class="card-word-front" id="front-word">...</h2>
+                    <button class="btn btn-secondary btn-sm" id="front-audio-btn"
+                            style="border-radius: var(--radius-full);">
+                        🔊 Listen to Word
+                    </button>
+                    <span class="card-hint">👆 Tap to flip • ↔️ Swipe for next card</span>
+                </div>
 
-            <!-- Back of Card: Context Sentence -->
-            <div class="flashcard-face flashcard-back">
-                <span class="badge badge-primary" style="position: absolute; top: 1.25rem; left: 1.25rem;">Context Sentence</span>
-                <h3 id="back-word-title" style="font-size: 1.4rem; color: var(--primary); margin-bottom: 0.5rem;">
-                    ...</h3>
-                <p class="card-sentence-back" id="back-sentence">...</p>
-                <button class="btn btn-success btn-sm" id="back-audio-btn" style="border-radius: var(--radius-full);">
-                    🔊 Listen with Context
-                </button>
-                <span class="card-hint">Tap card or press [Space] to flip back</span>
+                <!-- Back of Card: Context Sentence -->
+                <div class="flashcard-face flashcard-back">
+                    <span class="badge badge-primary" style="position: absolute; top: 1.25rem; left: 1.25rem;">Context Sentence</span>
+                    <h3 id="back-word-title" style="font-size: 1.4rem; color: var(--primary); margin-bottom: 0.5rem;">
+                        ...</h3>
+                    <p class="card-sentence-back" id="back-sentence">...</p>
+                    <button class="btn btn-success btn-sm" id="back-audio-btn" style="border-radius: var(--radius-full);">
+                        🔊 Listen with Context
+                    </button>
+                    <span class="card-hint">👆 Tap to flip back • ↔️ Swipe for next card</span>
+                </div>
             </div>
         </div>
     </div>
@@ -198,7 +217,11 @@
     const studyWords = JSON.parse(document.getElementById('study-words-data').textContent || '[]');
     let currentCardIndex = 0;
     let audioTimer = null;
+    let isCardFlipped = false;
+    let isAnimating = false;
 
+    const cardScene = document.getElementById('flashcard-scene');
+    const cardWrapper = document.getElementById('flashcard-wrapper');
     const cardElement = document.getElementById('study-card');
     const frontWord = document.getElementById('front-word');
     const backWordTitle = document.getElementById('back-word-title');
@@ -215,11 +238,15 @@
     function renderCard(index, autoPlay = true) {
         if (!studyWords || studyWords.length === 0) return;
 
-        // Always start on front side
-        cardElement.classList.remove('is-flipped');
-
         currentCardIndex = (index + studyWords.length) % studyWords.length;
         const wordData = studyWords[currentCardIndex];
+
+        // Maintain the card's flipped or front state!
+        if (isCardFlipped) {
+            cardElement.classList.add('is-flipped');
+        } else {
+            cardElement.classList.remove('is-flipped');
+        }
 
         frontWord.innerText = wordData.word;
         backWordTitle.innerText = wordData.word;
@@ -231,20 +258,20 @@
         if (autoPlay) {
             clearTimeout(audioTimer);
             audioTimer = setTimeout(() => {
-                playAudioForCurrentWord(false);
+                playAudioForCurrentWord(isCardFlipped);
             }, 300);
         }
     }
 
     function flipCard() {
-        const willBeFlipped = !cardElement.classList.contains('is-flipped');
-        cardElement.classList.toggle('is-flipped');
-        if (willBeFlipped) {
-            clearTimeout(audioTimer);
-            audioTimer = setTimeout(() => {
-                playAudioForCurrentWord(true);
-            }, 300);
-        }
+        if (isAnimating) return;
+        isCardFlipped = !cardElement.classList.contains('is-flipped');
+        cardElement.classList.toggle('is-flipped', isCardFlipped);
+
+        clearTimeout(audioTimer);
+        audioTimer = setTimeout(() => {
+            playAudioForCurrentWord(isCardFlipped);
+        }, 250);
     }
 
     function playAudioForCurrentWord(withContext = false) {
@@ -258,21 +285,187 @@
         }
     }
 
-    // Event Listeners
-    cardElement.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
-        flipCard();
+    function navigateCard(direction) {
+        if (isAnimating || !studyWords || studyWords.length === 0) return;
+        isAnimating = true;
+
+        const isNext = (direction === 'next');
+        const targetIndex = isNext ? currentCardIndex + 1 : currentCardIndex - 1;
+
+        // Slide out in swipe/nav direction
+        const exitX = isNext ? -120 : 120;
+        const exitTilt = isNext ? -5 : 5;
+        const enterX = isNext ? 120 : -120;
+        const enterTilt = isNext ? 5 : -5;
+
+        cardWrapper.style.transition = 'transform 0.18s ease-out, opacity 0.18s ease-out';
+        cardWrapper.style.transform = `translateX(${exitX}%) rotate(${exitTilt}deg)`;
+        cardWrapper.style.opacity = '0';
+
+        setTimeout(() => {
+            // Render next word, preserving current flipped state
+            renderCard(targetIndex, true);
+
+            // Instantly place wrapper on incoming entry side
+            cardWrapper.style.transition = 'none';
+            cardWrapper.style.transform = `translateX(${enterX}%) rotate(${enterTilt}deg)`;
+            cardWrapper.style.opacity = '0';
+
+            void cardWrapper.offsetWidth; // Force browser layout reflow
+
+            // Smoothly glide into center
+            cardWrapper.style.transition = 'transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.24s ease-out';
+            cardWrapper.style.transform = 'translateX(0px) rotate(0deg)';
+            cardWrapper.style.opacity = '1';
+
+            setTimeout(() => {
+                isAnimating = false;
+            }, 250);
+        }, 180);
+    }
+
+    // --- Touch / Swipe ("Wipe") Gesture Support (Optimized for iPad & Mobile) ---
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchDeltaX = 0;
+    let touchDeltaY = 0;
+    let touchStartTime = 0;
+    let isTouchActive = false;
+    let isHorizontalSwipe = false;
+
+    cardScene.addEventListener('touchstart', (e) => {
+        if (isAnimating || e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchDeltaX = 0;
+        touchDeltaY = 0;
+        touchStartTime = Date.now();
+        isTouchActive = true;
+        isHorizontalSwipe = false;
+        cardWrapper.style.transition = 'none';
+    }, { passive: true });
+
+    cardScene.addEventListener('touchmove', (e) => {
+        if (!isTouchActive || isAnimating || e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        touchDeltaX = touch.clientX - touchStartX;
+        touchDeltaY = touch.clientY - touchStartY;
+
+        if (!isHorizontalSwipe) {
+            if (Math.abs(touchDeltaX) > 10 && Math.abs(touchDeltaX) > Math.abs(touchDeltaY)) {
+                isHorizontalSwipe = true;
+            } else if (Math.abs(touchDeltaY) > 10) {
+                // Vertical scrolling on page, cancel card horizontal drag
+                isTouchActive = false;
+                cardWrapper.style.transition = 'transform 0.2s ease-out';
+                cardWrapper.style.transform = 'translateX(0px) rotate(0deg)';
+                return;
+            }
+        }
+
+        if (isHorizontalSwipe) {
+            if (e.cancelable) e.preventDefault();
+            const tilt = touchDeltaX * 0.035;
+            cardWrapper.style.transform = `translateX(${touchDeltaX}px) rotate(${tilt}deg)`;
+        }
+    }, { passive: false });
+
+    cardScene.addEventListener('touchend', (e) => {
+        if (!isTouchActive) return;
+        isTouchActive = false;
+
+        const deltaTime = Date.now() - touchStartTime;
+        const absX = Math.abs(touchDeltaX);
+        const velocity = absX / Math.max(deltaTime, 1);
+
+        if (isHorizontalSwipe && (absX > 50 || (absX > 25 && velocity > 0.35))) {
+            if (touchDeltaX < 0) {
+                navigateCard('next');
+            } else {
+                navigateCard('prev');
+            }
+        } else {
+            // Snap back to center
+            cardWrapper.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            cardWrapper.style.transform = 'translateX(0px) rotate(0deg)';
+
+            // Clean tap detection (not button click)
+            if (!isHorizontalSwipe && absX < 10 && Math.abs(touchDeltaY) < 10 && deltaTime < 350) {
+                if (!e.target.closest('button')) {
+                    flipCard();
+                }
+            }
+        }
     });
 
+    cardScene.addEventListener('touchcancel', () => {
+        isTouchActive = false;
+        isHorizontalSwipe = false;
+        cardWrapper.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        cardWrapper.style.transform = 'translateX(0px) rotate(0deg)';
+    });
+
+    // --- Mouse Drag / Click Support (For Laptop / Desktop) ---
+    let isMouseDown = false;
+    let mouseStartX = 0;
+    let mouseStartY = 0;
+    let mouseDeltaX = 0;
+    let mouseDeltaY = 0;
+    let mouseStartTime = 0;
+
+    cardScene.addEventListener('mousedown', (e) => {
+        if (isAnimating || e.button !== 0 || e.target.closest('button')) return;
+        isMouseDown = true;
+        mouseStartX = e.clientX;
+        mouseStartY = e.clientY;
+        mouseDeltaX = 0;
+        mouseDeltaY = 0;
+        mouseStartTime = Date.now();
+        cardWrapper.style.transition = 'none';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isMouseDown || isAnimating) return;
+        mouseDeltaX = e.clientX - mouseStartX;
+        mouseDeltaY = e.clientY - mouseStartY;
+        if (Math.abs(mouseDeltaX) > 8) {
+            const tilt = mouseDeltaX * 0.035;
+            cardWrapper.style.transform = `translateX(${mouseDeltaX}px) rotate(${tilt}deg)`;
+        }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+
+        const deltaTime = Date.now() - mouseStartTime;
+        const absX = Math.abs(mouseDeltaX);
+        const velocity = absX / Math.max(deltaTime, 1);
+
+        if (absX > 50 || (absX > 25 && velocity > 0.35)) {
+            if (mouseDeltaX < 0) {
+                navigateCard('next');
+            } else {
+                navigateCard('prev');
+            }
+        } else {
+            cardWrapper.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            cardWrapper.style.transform = 'translateX(0px) rotate(0deg)';
+
+            // Clean click to flip
+            if (absX < 8 && Math.abs(mouseDeltaY) < 8 && deltaTime < 350) {
+                if (!e.target.closest('button') && cardScene.contains(e.target)) {
+                    flipCard();
+                }
+            }
+        }
+    });
+
+    // Control Buttons
     btnFlip.addEventListener('click', flipCard);
-
-    btnNext.addEventListener('click', () => {
-        renderCard(currentCardIndex + 1, true);
-    });
-
-    btnPrev.addEventListener('click', () => {
-        renderCard(currentCardIndex - 1, true);
-    });
+    btnNext.addEventListener('click', () => navigateCard('next'));
+    btnPrev.addEventListener('click', () => navigateCard('prev'));
 
     btnShuffle.addEventListener('click', () => {
         for (let i = studyWords.length - 1; i > 0; i--) {
@@ -298,9 +491,9 @@
             e.preventDefault();
             flipCard();
         } else if (e.code === 'ArrowRight') {
-            renderCard(currentCardIndex + 1, true);
+            navigateCard('next');
         } else if (e.code === 'ArrowLeft') {
-            renderCard(currentCardIndex - 1, true);
+            navigateCard('prev');
         }
     });
 
