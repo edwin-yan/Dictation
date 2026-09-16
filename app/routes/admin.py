@@ -387,10 +387,8 @@ def add_word(list_id):
     )
     db.session.add(word_obj)
     db.session.commit()
-    flash(f"Word '{word_text}' added to '{wlist.title}'.", 'success')
-    if wlist.folder_id:
-        return redirect(url_for('admin.lists', folder_id=wlist.folder_id))
-    return redirect(url_for('admin.lists', folder_id='unfiled'))
+    target_folder = wlist.folder_id if wlist.folder_id else 'unfiled'
+    return redirect(url_for('admin.lists', folder_id=target_folder, _anchor=f"list-{wlist.id}"))
 
 
 @admin_bp.route('/words/<int:word_id>/edit', methods=['POST'])
@@ -404,19 +402,23 @@ def edit_word(word_id):
     word_text = request.form.get('word', '').strip()
     context = request.form.get('context_sentence', '').strip()
 
+    target_fid = word_obj.word_list.folder_id if word_obj.word_list else None
+    target_folder = target_fid if target_fid else 'unfiled'
+    target_lid = word_obj.word_list.id if word_obj.word_list else None
+
     if not word_text:
         flash('Word text cannot be empty.', 'danger')
-        target_fid = word_obj.word_list.folder_id if word_obj.word_list else None
-        return redirect(url_for('admin.lists', folder_id=target_fid if target_fid else 'unfiled'))
+        if target_lid:
+            return redirect(url_for('admin.lists', folder_id=target_folder, _anchor=f"list-{target_lid}"))
+        return redirect(url_for('admin.lists', folder_id=target_folder))
 
     word_obj.word = word_text
     word_obj.context_sentence = context if context else None
-    target_fid = word_obj.word_list.folder_id if word_obj.word_list else None
     db.session.commit()
     flash(f"Word '{word_text}' updated.", 'success')
-    if target_fid:
-        return redirect(url_for('admin.lists', folder_id=target_fid))
-    return redirect(url_for('admin.lists', folder_id='unfiled'))
+    if target_lid:
+        return redirect(url_for('admin.lists', folder_id=target_folder, _anchor=f"list-{target_lid}"))
+    return redirect(url_for('admin.lists', folder_id=target_folder))
 
 
 @admin_bp.route('/words/<int:word_id>/delete', methods=['POST'])
@@ -427,12 +429,14 @@ def delete_word(word_id):
         list_title = word_obj.word_list.title
         word_name = word_obj.word
         target_fid = word_obj.word_list.folder_id if word_obj.word_list else None
+        target_folder = target_fid if target_fid else 'unfiled'
+        target_lid = word_obj.word_list.id if word_obj.word_list else None
         db.session.delete(word_obj)
         db.session.commit()
         flash(f"Word '{word_name}' removed from '{list_title}'.", 'info')
-        if target_fid:
-            return redirect(url_for('admin.lists', folder_id=target_fid))
-        return redirect(url_for('admin.lists', folder_id='unfiled'))
+        if target_lid:
+            return redirect(url_for('admin.lists', folder_id=target_folder, _anchor=f"list-{target_lid}"))
+        return redirect(url_for('admin.lists', folder_id=target_folder))
     return redirect(url_for('admin.lists'))
 
 

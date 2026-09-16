@@ -148,4 +148,129 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // 7. Word Lists Collapsible Accordion (Compact by Default)
+    const listCards = document.querySelectorAll('.collapsible-list-card');
+    const btnToggleAll = document.getElementById('btn-toggle-all-lists');
+    const toggleAllIcon = document.getElementById('toggle-all-icon');
+    const toggleAllText = document.getElementById('toggle-all-text');
+
+    function collapseCard(card) {
+        if (!card) return;
+        card.classList.remove('is-expanded');
+        const header = card.querySelector('.list-accordion-header');
+        if (header) header.setAttribute('aria-expanded', 'false');
+    }
+
+    function expandCard(card, updateHash = false) {
+        if (!card) return;
+        card.classList.add('is-expanded');
+        const header = card.querySelector('.list-accordion-header');
+        if (header) header.setAttribute('aria-expanded', 'true');
+        if (updateHash) {
+            const listId = card.getAttribute('data-list-id');
+            if (listId && history.replaceState) {
+                history.replaceState(null, '', `#list-${listId}`);
+            }
+        }
+    }
+
+    function updateToggleAllButtonState() {
+        if (!btnToggleAll) return;
+        const total = listCards.length;
+        const expandedCount = document.querySelectorAll('.collapsible-list-card.is-expanded').length;
+        if (total > 0 && expandedCount === total) {
+            if (toggleAllIcon) toggleAllIcon.textContent = '📁';
+            if (toggleAllText) toggleAllText.textContent = 'Collapse All';
+        } else {
+            if (toggleAllIcon) toggleAllIcon.textContent = '📂';
+            if (toggleAllText) toggleAllText.textContent = 'Expand All';
+        }
+    }
+
+    listCards.forEach(card => {
+        const header = card.querySelector('.list-accordion-header');
+        if (!header) return;
+
+        header.addEventListener('click', (e) => {
+            // Prevent toggle if clicking on edit/delete action buttons, inputs, or forms
+            if (e.target.closest('[data-no-toggle="true"]') ||
+                e.target.closest('button') ||
+                e.target.closest('form') ||
+                e.target.closest('input')) {
+                return;
+            }
+
+            const isCurrentlyExpanded = card.classList.contains('is-expanded');
+
+            if (isCurrentlyExpanded) {
+                // Clicking an already expanded list collapses it
+                collapseCard(card);
+                if (history.replaceState) {
+                    history.replaceState(null, '', window.location.pathname + window.location.search);
+                }
+            } else {
+                // Accordion behavior: collapse all other lists and expand this one
+                listCards.forEach(otherCard => {
+                    if (otherCard !== card) {
+                        collapseCard(otherCard);
+                    }
+                });
+                expandCard(card, true);
+            }
+            updateToggleAllButtonState();
+        });
+
+        // Keyboard accessibility: Enter or Space on header
+        header.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                if (e.target.closest('[data-no-toggle="true"]') ||
+                    e.target.closest('button') ||
+                    e.target.closest('form')) return;
+                e.preventDefault();
+                header.click();
+            }
+        });
+    });
+
+    // Expand All / Collapse All Toggle Button
+    if (btnToggleAll) {
+        btnToggleAll.addEventListener('click', () => {
+            const total = listCards.length;
+            const expandedCount = document.querySelectorAll('.collapsible-list-card.is-expanded').length;
+            const shouldExpandAll = expandedCount < total;
+
+            listCards.forEach(card => {
+                if (shouldExpandAll) {
+                    expandCard(card, false);
+                } else {
+                    collapseCard(card);
+                }
+            });
+
+            if (!shouldExpandAll && history.replaceState) {
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+            updateToggleAllButtonState();
+        });
+    }
+
+    // Auto-expand list matching URL hash (after adding/editing/deleting a word, or opening a direct link)
+    if (window.location.hash) {
+        const hash = window.location.hash.replace('#', '');
+        let targetCard = null;
+        if (hash.startsWith('list-card-')) {
+            targetCard = document.getElementById(hash);
+        } else if (hash.startsWith('list-')) {
+            const id = hash.replace('list-', '');
+            targetCard = document.getElementById(`list-card-${id}`);
+        }
+        if (targetCard) {
+            expandCard(targetCard, false);
+            updateToggleAllButtonState();
+            setTimeout(() => {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 150);
+        }
+    }
 });

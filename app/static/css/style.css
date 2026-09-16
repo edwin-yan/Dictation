@@ -1532,3 +1532,180 @@ a:hover {
         justify-content: center;
     }
 }
+
+/* ==========================================================================
+   Admin Portal: Collapsible Accordion Word Lists
+   ========================================================================== */
+
+.list-toolbar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+    padding: 0.1rem 0.25rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.list-toolbar-hint {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.collapsible-list-card {
+    margin-bottom: 0.85rem !important;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--slate-200);
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+    padding: 0 !important;
+}
+
+.collapsible-list-card:hover {
+    border-color: var(--slate-300);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+}
+
+.collapsible-list-card.is-expanded {
+    border-color: var(--primary-border);
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem !important;
+}
+
+.list-accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.15rem 1.35rem;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.15s ease;
+}
+
+.list-accordion-header:hover {
+    background: var(--slate-50);
+}
+
+.collapsible-list-card.is-expanded .list-accordion-header {
+    background: #f8faff;
+    border-bottom: 1px solid var(--slate-200);
+}
+
+.list-accordion-header-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.list-title-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.list-chevron {
+    font-size: 0.75rem;
+    color: var(--slate-400);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--slate-100);
+    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.15s ease, color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.list-accordion-header:hover .list-chevron {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.collapsible-list-card.is-expanded .list-chevron {
+    transform: rotate(90deg);
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.list-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--slate-900);
+    margin: 0;
+    line-height: 1.3;
+}
+
+.list-card-desc {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin: 0.35rem 0 0 1.95rem;
+    line-height: 1.4;
+}
+
+.list-accordion-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.list-accordion-body {
+    display: none;
+    padding: 1.35rem;
+    background: #ffffff;
+    animation: accordionFadeDown 0.2s ease-out;
+}
+
+.collapsible-list-card.is-expanded .list-accordion-body {
+    display: block;
+}
+
+@keyframes accordionFadeDown {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.list-add-word-box {
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+    .list-accordion-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        padding: 1rem 1rem;
+    }
+
+    .list-card-desc {
+        margin-left: 0;
+    }
+
+    .list-accordion-actions {
+        justify-content: flex-end;
+        border-top: 1px dashed var(--slate-200);
+        padding-top: 0.65rem;
+    }
+
+    .list-accordion-body {
+        padding: 1rem 0.75rem;
+    }
+}
