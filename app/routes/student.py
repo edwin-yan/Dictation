@@ -214,7 +214,8 @@ def take_challenge(list_id):
         'student_id': student.id,
         'list_id': word_list.id,
         'test_type': 'list',
-        'title': word_list.title
+        'title': word_list.title,
+        'allow_multiple_words': word_list.allow_multiple_words
     }
 
     return render_template(
@@ -263,7 +264,8 @@ def take_tricky_challenge():
         'student_id': student.id,
         'list_id': None,
         'test_type': 'missed_words',
-        'title': 'Tricky Words Quest'
+        'title': 'Tricky Words Quest',
+        'allow_multiple_words': False
     }
 
     return render_template(

@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const name = btn.getAttribute('data-name') || '';
             const desc = btn.getAttribute('data-desc') || '';
             const icon = btn.getAttribute('data-icon') || '📁';
+            const allowMultiple = btn.getAttribute('data-allow-multiple') === 'true';
 
             const modal = document.getElementById('edit-folder-modal');
             const form = document.getElementById('edit-folder-form');
@@ -83,6 +84,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const iconSelect = form.querySelector('[name="icon"]');
                 if (iconSelect) iconSelect.value = icon;
+
+                // Word Format Radio
+                const radioSingle = form.querySelector('#edit-folder-format-single');
+                const radioMultiple = form.querySelector('#edit-folder-format-multiple');
+                if (allowMultiple && radioMultiple) {
+                    radioMultiple.checked = true;
+                } else if (radioSingle) {
+                    radioSingle.checked = true;
+                }
 
                 modal.classList.add('active');
             }

@@ -1,6 +1,6 @@
 import pytest
 from flask import session
-from app.models import db, Student, WordList, Word, ChallengeAttempt, MissedWord
+from app.models import db, Student, WordListFolder, WordList, Word, ChallengeAttempt, MissedWord
 
 
 class TestRoutes:
@@ -190,4 +190,67 @@ class TestRoutes:
         assert b"2nd Grade Vocabulary" in res_all.data
         assert b"4th Grade Weekly List" in res_all.data
         assert b"Standalone Spelling List" in res_all.data
+
+    def test_admin_create_and_edit_folder_word_format(self, client, app):
+        client.post('/admin/login', data={'password': 'testadminpassword'})
+
+        # Create folder with default single word format
+        res_create_single = client.post('/admin/folders/create', data={
+            'name': '1st Grade Single',
+            'word_format': 'single'
+        }, follow_redirects=True)
+        assert res_create_single.status_code == 200
+
+        with app.app_context():
+            folder_s = WordListFolder.query.filter_by(name='1st Grade Single').first()
+            assert folder_s is not None
+            assert folder_s.allow_multiple_words is False
+
+            # Edit folder to allow multiple words
+            res_edit = client.post(f'/admin/folders/{folder_s.id}/edit', data={
+                'name': '1st Grade Multi',
+                'word_format': 'multiple'
+            }, follow_redirects=True)
+            assert res_edit.status_code == 200
+
+            db.session.refresh(folder_s)
+            assert folder_s.name == '1st Grade Multi'
+            assert folder_s.allow_multiple_words is True
+
+    def test_submit_test_strips_accidental_spaces_in_single_word_bundle(self, client, app):
+        with app.app_context():
+            student = Student(name="Alex", avatar="🚀")
+            folder = WordListFolder(name="4th Grade Spelling", allow_multiple_words=False)
+            db.session.add_all([student, folder])
+            db.session.flush()
+
+            wlist = WordList(title="Accident List", folder_id=folder.id)
+            db.session.add(wlist)
+            db.session.flush()
+
+            w = Word(list_id=wlist.id, word="accident", position=0)
+            db.session.add(w)
+            db.session.commit()
+
+            student_id = student.id
+            list_id = wlist.id
+
+        # Submit answer where the student accidentally typed "acc ident"
+        payload = {
+            "student_id": student_id,
+            "list_id": list_id,
+            "test_type": "list",
+            "title": "Accident List",
+            "answers": [
+                {"word": "accident", "context_sentence": "He had an accident.", "student_input": "acc ident"}
+            ]
+        }
+
+        res = client.post('/api/test/submit', json=payload)
+        assert res.status_code == 200
+        data = res.get_json()
+        assert data['success'] is True
+        assert data['score'] == 1
+        assert data['total'] == 1
+        assert data['percentage'] == 100.0
 

@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const words = config.words;
+    const allowMultipleWords = Boolean(config.allow_multiple_words);
     let currentIndex = 0;
     const recordedAnswers = [];
     let isSubmitting = false;
@@ -121,7 +122,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentIndex >= words.length) return;
 
         const currentWord = words[currentIndex];
-        const studentInput = wordInput ? wordInput.value.trim() : '';
+        let studentInput = wordInput ? wordInput.value.trim() : '';
+        if (!allowMultipleWords) {
+            studentInput = studentInput.replace(/[\s.]+/g, '');
+        } else {
+            studentInput = studentInput.replace(/\.+$/, '');
+        }
         const minLength = getMinRequiredLength();
 
         if (studentInput.length < minLength) {
@@ -213,7 +219,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (wordInput) {
+        // Intercept beforeinput to block incoming spaces or macOS double-space dot replacements
+        wordInput.addEventListener('beforeinput', (e) => {
+            if (!allowMultipleWords) {
+                if (e.data && /[\s.]/.test(e.data)) {
+                    e.preventDefault();
+                    return;
+                }
+                if (e.inputType === 'insertReplacementText') {
+                    e.preventDefault();
+                    return;
+                }
+            }
+        });
+
         wordInput.addEventListener('input', () => {
+            if (!allowMultipleWords && /[\s.]/.test(wordInput.value)) {
+                const start = wordInput.selectionStart;
+                const oldLen = wordInput.value.length;
+                wordInput.value = wordInput.value.replace(/[\s.]+/g, '');
+                const diff = oldLen - wordInput.value.length;
+                const newPos = Math.max(0, (start || 0) - diff);
+                if (wordInput.setSelectionRange) {
+                    wordInput.setSelectionRange(newPos, newPos);
+                }
+            }
+
             const minLength = getMinRequiredLength();
             const currentVal = wordInput.value.trim();
             if (currentVal.length >= minLength) {
@@ -226,11 +257,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         wordInput.addEventListener('keydown', (e) => {
+            // In single-word mode, prevent Space key and Period key from inserting space or dot
+            if (!allowMultipleWords && (e.key === ' ' || e.code === 'Space' || e.keyCode === 32 || e.key === '.' || e.code === 'Period')) {
+                e.preventDefault();
+                return;
+            }
             if (e.key === 'Enter') {
                 e.preventDefault();
                 handleWordSubmission();
             }
         });
+
+        if (!allowMultipleWords) {
+            wordInput.addEventListener('paste', () => {
+                setTimeout(() => {
+                    wordInput.value = wordInput.value.replace(/[\s.]+/g, '');
+                }, 0);
+            });
+            wordInput.addEventListener('blur', () => {
+                wordInput.value = wordInput.value.replace(/[\s.]+/g, '');
+            });
+        }
     }
 
     // Keyboard shortcut: Ctrl + Space or Cmd + Space or Alt + R for repeat audio

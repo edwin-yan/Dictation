@@ -175,13 +175,21 @@ def create_folder():
     name = request.form.get('name', '').strip()
     description = request.form.get('description', '').strip()
     icon = request.form.get('icon', '📁').strip()
+    word_format = request.form.get('word_format', 'single').strip()
+    allow_multiple = (word_format == 'multiple')
 
     if not name:
         flash('Bundle name is required.', 'danger')
         return redirect(url_for('admin.lists'))
 
     pos = WordListFolder.query.count()
-    folder = WordListFolder(name=name, description=description, icon=icon, position=pos)
+    folder = WordListFolder(
+        name=name,
+        description=description,
+        icon=icon,
+        position=pos,
+        allow_multiple_words=allow_multiple
+    )
 
     # Auto-associate new folder with all existing students
     for s in Student.query.all():
@@ -204,6 +212,7 @@ def edit_folder(folder_id):
     name = request.form.get('name', '').strip()
     description = request.form.get('description', '').strip()
     icon = request.form.get('icon', folder.icon).strip()
+    word_format = request.form.get('word_format', '').strip()
 
     if not name:
         flash('Bundle name cannot be empty.', 'danger')
@@ -212,6 +221,9 @@ def edit_folder(folder_id):
     folder.name = name
     folder.description = description
     folder.icon = icon
+    if word_format:
+        folder.allow_multiple_words = (word_format == 'multiple')
+
     db.session.commit()
     flash(f"Bundle '{name}' updated.", 'success')
     return redirect(url_for('admin.lists', folder_id=folder.id))

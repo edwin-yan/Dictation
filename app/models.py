@@ -80,6 +80,7 @@ class WordListFolder(db.Model):
     description = db.Column(db.Text, nullable=True)
     icon = db.Column(db.String(20), default='📁')
     position = db.Column(db.Integer, default=0)
+    allow_multiple_words = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
 
     # Lists in this folder
@@ -97,6 +98,7 @@ class WordListFolder(db.Model):
             'description': self.description or '',
             'icon': self.icon,
             'position': self.position,
+            'allow_multiple_words': bool(self.allow_multiple_words),
             'list_count': self.lists.count(),
             'total_words': sum(l.words.count() for l in self.lists.all()),
             'created_at': self.created_at.isoformat() if self.created_at else None
@@ -123,6 +125,12 @@ class WordList(db.Model):
                             order_by='Word.position')
     attempts = db.relationship('ChallengeAttempt', backref='word_list', lazy='dynamic')
 
+    @property
+    def allow_multiple_words(self) -> bool:
+        if self.folder is not None:
+            return bool(self.folder.allow_multiple_words)
+        return False
+
     def to_dict(self, include_words=False):
         data = {
             'id': self.id,
@@ -131,6 +139,7 @@ class WordList(db.Model):
             'title': self.title,
             'description': self.description or '',
             'category': self.category,
+            'allow_multiple_words': self.allow_multiple_words,
             'word_count': self.words.count(),
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None

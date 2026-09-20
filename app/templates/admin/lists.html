@@ -52,7 +52,7 @@
             </a>
             <div class="folder-tab-actions">
                 <button type="button" class="btn-folder-action btn-edit-folder" data-id="{{ f.id }}" data-name="{{ f.name }}"
-                        data-desc="{{ f.description or '' }}" data-icon="{{ f.icon }}" title="Edit Bundle">
+                        data-desc="{{ f.description or '' }}" data-icon="{{ f.icon }}" data-allow-multiple="{{ 'true' if f.allow_multiple_words else 'false' }}" title="Edit Bundle">
                     ✏️
                 </button>
                 <form method="POST" action="{{ url_for('admin.delete_folder', folder_id=f.id) }}"
@@ -112,6 +112,11 @@
                 <span class="badge badge-primary">{{ word_lists|length }} {% if word_lists|length == 1 %}List{% else %}Lists{% endif %}</span>
                 {% if active_folder %}
                 <span class="badge badge-gray">{{ active_folder.total_words }} Words</span>
+                {% if active_folder.allow_multiple_words %}
+                <span class="badge badge-warning" title="Multiple words with spaces permitted">Multi-Word</span>
+                {% else %}
+                <span class="badge badge-gray" title="Single word only: spaces are automatically stripped during tests">Single Word</span>
+                {% endif %}
                 {% endif %}
             </div>
             <p class="active-folder-desc">
@@ -135,7 +140,8 @@
         </button>
         <button type="button" class="btn btn-secondary btn-sm btn-edit-folder"
                 data-id="{{ active_folder.id }}" data-name="{{ active_folder.name }}"
-                data-desc="{{ active_folder.description or '' }}" data-icon="{{ active_folder.icon }}">
+                data-desc="{{ active_folder.description or '' }}" data-icon="{{ active_folder.icon }}"
+                data-allow-multiple="{{ 'true' if active_folder.allow_multiple_words else 'false' }}">
             ✏️ Edit Bundle
         </button>
         {% elif active_folder_id == 'unfiled' %}
@@ -360,6 +366,31 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label class="form-label">Word Format</label>
+                <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.35rem; background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-md); padding: 0.85rem;">
+                    <label style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; margin: 0;">
+                        <input type="radio" name="word_format" value="single" checked style="margin-top: 0.2rem;">
+                        <div>
+                            <span style="font-weight: 600; color: var(--slate-900);">Single Word Only</span>
+                            <span class="badge badge-primary" style="font-size: 0.7rem; margin-left: 0.35rem;">Default</span>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                Strips accidental spaces and blocks the space key during spelling quests.
+                            </div>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; margin: 0;">
+                        <input type="radio" name="word_format" value="multiple" style="margin-top: 0.2rem;">
+                        <div>
+                            <span style="font-weight: 600; color: var(--slate-900);">Allow Multiple Words</span>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                Permits spaces for multi-word phrases or compound words (e.g. "ice cream", "a lot").
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
                 <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
                 <button type="submit" class="btn btn-primary">Create Bundle</button>
@@ -397,6 +428,31 @@
                     <option value="🚀">🚀 Space</option>
                     <option value="⭐">⭐ Star</option>
                 </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Word Format</label>
+                <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.35rem; background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-md); padding: 0.85rem;">
+                    <label style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; margin: 0;">
+                        <input type="radio" id="edit-folder-format-single" name="word_format" value="single" checked style="margin-top: 0.2rem;">
+                        <div>
+                            <span style="font-weight: 600; color: var(--slate-900);">Single Word Only</span>
+                            <span class="badge badge-primary" style="font-size: 0.7rem; margin-left: 0.35rem;">Default</span>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                Strips accidental spaces and blocks the space key during spelling quests.
+                            </div>
+                        </div>
+                    </label>
+                    <label style="display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; margin: 0;">
+                        <input type="radio" id="edit-folder-format-multiple" name="word_format" value="multiple" style="margin-top: 0.2rem;">
+                        <div>
+                            <span style="font-weight: 600; color: var(--slate-900);">Allow Multiple Words</span>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                Permits spaces for multi-word phrases or compound words (e.g. "ice cream", "a lot").
+                            </div>
+                        </div>
+                    </label>
+                </div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">

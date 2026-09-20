@@ -107,3 +107,35 @@ class TestModels:
             assert fetched_mw is not None
             assert fetched_mw.mistake_count == 2
             assert fetched_mw.is_resolved is False
+
+    def test_bundle_allow_multiple_words_setting(self, app):
+        with app.app_context():
+            # Default should be False (Single Word Only)
+            folder = WordListFolder(name="Spelling Bee")
+            db.session.add(folder)
+            db.session.flush()
+            assert folder.allow_multiple_words is False
+
+            l1 = WordList(folder_id=folder.id, title="Bee List 1")
+            db.session.add(l1)
+            db.session.flush()
+            assert l1.allow_multiple_words is False
+            assert l1.to_dict()['allow_multiple_words'] is False
+
+            # Toggle folder to allow multiple words
+            folder.allow_multiple_words = True
+            db.session.commit()
+
+            fetched = WordListFolder.query.filter_by(name="Spelling Bee").first()
+            assert fetched.allow_multiple_words is True
+            assert fetched.to_dict()['allow_multiple_words'] is True
+
+            fetched_list = WordList.query.filter_by(title="Bee List 1").first()
+            assert fetched_list.allow_multiple_words is True
+            assert fetched_list.to_dict()['allow_multiple_words'] is True
+
+            # Unfiled list defaults to False
+            unfiled = WordList(title="Unfiled List")
+            db.session.add(unfiled)
+            db.session.commit()
+            assert unfiled.allow_multiple_words is False

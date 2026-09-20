@@ -33,6 +33,19 @@ def create_app(config_class=Config):
     # Ensure database tables and auto-seed on startup if empty
     with app.app_context():
         db.create_all()
+
+        # Lightweight SQLite column migration check
+        try:
+            from sqlalchemy import text
+            with db.engine.connect() as conn:
+                res = conn.execute(text("PRAGMA table_info(word_list_folders)"))
+                existing_cols = [row[1] for row in res.fetchall()]
+                if 'allow_multiple_words' not in existing_cols:
+                    conn.execute(text("ALTER TABLE word_list_folders ADD COLUMN allow_multiple_words BOOLEAN DEFAULT 0 NOT NULL"))
+                    conn.commit()
+        except Exception as e:
+            print(f"Migration check notification: {e}")
+
         # Check if database is empty and auto-seed if needed
         from app.models import Student, WordList
         if not Student.query.first() or not WordList.query.first():

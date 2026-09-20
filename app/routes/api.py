@@ -79,6 +79,13 @@ def submit_test():
     correct_count = 0
     now = datetime.now(timezone.utc)
 
+    # Determine bundle setting for single word vs multiple words
+    allow_multiple_words = False
+    if list_id:
+        target_list = db.session.get(WordList, list_id)
+        if target_list:
+            allow_multiple_words = target_list.allow_multiple_words
+
     # Create challenge attempt record
     attempt = ChallengeAttempt(
         student_id=student.id,
@@ -100,7 +107,7 @@ def submit_test():
         context_sentence = str(item.get('context_sentence', '')).strip()
         student_input = str(item.get('student_input', ''))
 
-        is_correct = grade_spelling(student_input, word_text)
+        is_correct = grade_spelling(student_input, word_text, allow_multiple_words=allow_multiple_words)
         if is_correct:
             correct_count += 1
 
